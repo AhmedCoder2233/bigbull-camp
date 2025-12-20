@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import InviteUser from "../components/InviteUser";
@@ -8,7 +8,7 @@ import WorkspaceChat from "../WorkspaceChat";
 import ActivitiesSection from "../components/ActivitiesSection";
 import { AuthContext } from "../context/AuthContext";
 import { WorkspaceContext } from "../context/WorkspaceContext";
-import { supabase } from "../lib/supabase"; // Supabase import karo
+import { supabase } from "../lib/supabase";
 import { 
   FiGrid, 
   FiUsers, 
@@ -26,9 +26,7 @@ import {
 export default function WorkspaceDetails() {
   const { id } = useParams();
   const { profile } = useContext(AuthContext);
-  const { 
-    currentWorkspace, 
-  } = useContext(WorkspaceContext);
+  const { currentWorkspace } = useContext(WorkspaceContext);
   
   const [activeTab, setActiveTab] = useState("tasks");
   const [workspaceStats, setWorkspaceStats] = useState({
@@ -40,7 +38,7 @@ export default function WorkspaceDetails() {
   const [loading, setLoading] = useState(false);
   const [activities, setActivities] = useState([]);
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
-  const [workspaceData, setWorkspaceData] = useState(null); // Workspace data store karne ke liye
+  const [workspaceData, setWorkspaceData] = useState(null);
 
   // Define tabs based on user role
   const getTabs = () => {
@@ -138,111 +136,99 @@ export default function WorkspaceDetails() {
     }
   };
 
- // Fetch workspace members from Supabase
-const fetchWorkspaceMembers = async (workspaceId) => {
-  try {
-    console.log("Fetching members for workspace:", workspaceId);
-    
-    // Direct query with proper join according to profiles table schema
-    const { data, error } = await supabase
-      .from("workspace_members")
-      .select(`
-        *,
-        profile:user_id (
-          id,
-          email,
-          name,
-          role,
-          status,
-          created_at
-        )
-      `)
-      .eq("workspace_id", workspaceId)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Supabase error fetching members:", error);
-      console.error("Error details:", error.message, error.details, error.hint);
-      throw error;
-    }
-    
-    console.log("Fetched workspace members:", data);
-    console.log("Number of members:", data?.length || 0);
-    
-    if (data && data.length > 0) {
-      // Transform data to match our expected format
-      const formattedData = data.map(member => ({
-        ...member,
-        user: {
-          id: member.profile?.id || member.user_id,
-          email: member.profile?.email || "No email",
-          name: member.profile?.name || "Unknown User",
-          full_name: member.profile?.name || "Unknown User",
-          role: member.profile?.role || "member",
-          status: member.profile?.status || "active",
-          avatar_url: null // Profiles table mein avatar_url nahi hai
-        }
-      }));
-      
-      console.log("Formatted workspace members:", formattedData);
-      setWorkspaceMembers(formattedData);
-      return formattedData;
-    } else {
-      console.log("No members found in database");
-      setWorkspaceMembers([]);
-      return [];
-    }
-  } catch (error) {
-    console.error("Error fetching workspace members:", error);
-    
-    // Fallback: Try simple query without join
+  // Fetch workspace members from Supabase
+  const fetchWorkspaceMembers = async (workspaceId) => {
     try {
-      const { data: simpleData, error: simpleError } = await supabase
+      console.log("Fetching members for workspace:", workspaceId);
+      
+      const { data, error } = await supabase
         .from("workspace_members")
-        .select("*")
-        .eq("workspace_id", workspaceId);
+        .select(`
+          *,
+          profile:user_id (
+            id,
+            email,
+            name,
+            role,
+            status,
+            created_at
+          )
+        `)
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: false });
 
-      if (simpleError) {
-        console.error("Simple query also failed:", simpleError);
-        setWorkspaceMembers([]);
-        return [];
+      if (error) {
+        console.error("Supabase error fetching members:", error);
+        throw error;
       }
-
-      if (simpleData && simpleData.length > 0) {
-        const fallbackData = simpleData.map(member => ({
+      
+      console.log("Fetched workspace members:", data);
+      
+      if (data && data.length > 0) {
+        const formattedData = data.map(member => ({
           ...member,
           user: {
-            id: member.user_id,
-            email: "Unknown",
-            name: "User",
-            full_name: "User",
-            role: "member",
-            status: "active",
+            id: member.profile?.id || member.user_id,
+            email: member.profile?.email || "No email",
+            name: member.profile?.name || "Unknown User",
+            full_name: member.profile?.name || "Unknown User",
+            role: member.profile?.role || "member",
+            status: member.profile?.status || "active",
             avatar_url: null
           }
         }));
         
-        console.log("Using fallback data:", fallbackData);
-        setWorkspaceMembers(fallbackData);
-        return fallbackData;
+        setWorkspaceMembers(formattedData);
+        return formattedData;
+      } else {
+        setWorkspaceMembers([]);
+        return [];
       }
+    } catch (error) {
+      console.error("Error fetching workspace members:", error);
       
-      setWorkspaceMembers([]);
-      return [];
-    } catch (fallbackError) {
-      console.error("Fallback also failed:", fallbackError);
-      setWorkspaceMembers([]);
-      return [];
-    }
-  }
-};
+      try {
+        const { data: simpleData, error: simpleError } = await supabase
+          .from("workspace_members")
+          .select("*")
+          .eq("workspace_id", workspaceId);
 
-  // Debug function to check what's in workspace_members table
+        if (simpleError) {
+          setWorkspaceMembers([]);
+          return [];
+        }
+
+        if (simpleData && simpleData.length > 0) {
+          const fallbackData = simpleData.map(member => ({
+            ...member,
+            user: {
+              id: member.user_id,
+              email: "Unknown",
+              name: "User",
+              full_name: "User",
+              role: "member",
+              status: "active",
+              avatar_url: null
+            }
+          }));
+          
+          setWorkspaceMembers(fallbackData);
+          return fallbackData;
+        }
+        
+        setWorkspaceMembers([]);
+        return [];
+      } catch (fallbackError) {
+        console.error("Fallback also failed:", fallbackError);
+        setWorkspaceMembers([]);
+        return [];
+      }
+    }
+  };
+
+  // Debug function
   const debugWorkspaceMembers = async (workspaceId) => {
     try {
-      console.log("Debugging workspace_members for workspaceId:", workspaceId);
-      
-      // Simple select without join
       const { data, error } = await supabase
         .from("workspace_members")
         .select("*")
@@ -252,17 +238,15 @@ const fetchWorkspaceMembers = async (workspaceId) => {
         console.error("Debug query error:", error);
       } else {
         console.log("Raw workspace_members data:", data);
-        console.log("Number of members found:", data?.length || 0);
       }
     } catch (error) {
       console.error("Debug error:", error);
     }
   };
 
-  // Fetch tasks count from Supabase
+  // Fetch tasks stats
   const fetchTasksStats = async (workspaceId) => {
     try {
-      // Total tasks count
       const { count: totalTasks, error: totalError } = await supabase
         .from("tasks")
         .select("*", { count: "exact", head: true })
@@ -270,7 +254,6 @@ const fetchWorkspaceMembers = async (workspaceId) => {
 
       if (totalError) throw totalError;
 
-      // Completed tasks count
       const { count: completedTasks, error: completedError } = await supabase
         .from("tasks")
         .select("*", { count: "exact", head: true })
@@ -289,10 +272,9 @@ const fetchWorkspaceMembers = async (workspaceId) => {
     }
   };
 
-  // Fetch pending invites count
+  // Fetch pending invites
   const fetchPendingInvites = async (workspaceId) => {
     try {
-      // Check if workspace_invites table exists
       const { count, error } = await supabase
         .from("workspace_invites")
         .select("*", { count: "exact", head: true })
@@ -300,7 +282,6 @@ const fetchWorkspaceMembers = async (workspaceId) => {
         .eq("status", "pending");
 
       if (error) {
-        // Table might not exist, return 0
         console.log("workspace_invites table not found or error:", error);
         return 0;
       }
@@ -312,10 +293,9 @@ const fetchWorkspaceMembers = async (workspaceId) => {
     }
   };
 
-  // Fetch activities from Supabase
+  // Fetch activities
   const fetchActivities = async (workspaceId) => {
     try {
-      // Check if activities table exists
       const { data, error } = await supabase
         .from("activities")
         .select(`
@@ -331,8 +311,6 @@ const fetchWorkspaceMembers = async (workspaceId) => {
         .limit(10);
 
       if (error) {
-        // Table might not exist
-        console.log("activities table not found, using mock data");
         const mockActivities = [
           {
             id: 1,
@@ -368,7 +346,6 @@ const fetchWorkspaceMembers = async (workspaceId) => {
           metadata: activity.metadata || {}
         })));
       } else {
-        // Fallback mock data
         const mockActivities = [
           {
             id: 1,
@@ -394,23 +371,15 @@ const fetchWorkspaceMembers = async (workspaceId) => {
       try {
         console.log("Loading workspace data for ID:", id);
         
-        // 1. First fetch workspace basic info
         const workspaceInfo = await fetchWorkspaceData(id);
-        
-        // 2. Debug: Check what's in workspace_members table
         await debugWorkspaceMembers(id);
         
-        // 3. Fetch all data in parallel
         const [members, tasksStats, pendingInvitesCount] = await Promise.all([
           fetchWorkspaceMembers(id),
           fetchTasksStats(id),
           fetchPendingInvites(id)
         ]);
 
-        console.log("Members data:", members);
-        console.log("Members count:", members.length);
-
-        // Update workspace stats
         setWorkspaceStats({
           totalTasks: tasksStats.totalTasks,
           completedTasks: tasksStats.completedTasks,
@@ -418,7 +387,6 @@ const fetchWorkspaceMembers = async (workspaceId) => {
           pendingInvites: pendingInvitesCount
         });
         
-        // 4. Fetch activities
         await fetchActivities(id);
       } catch (error) {
         console.error("Error loading workspace data:", error);
@@ -430,7 +398,8 @@ const fetchWorkspaceMembers = async (workspaceId) => {
     loadWorkspaceData();
   }, [id]);
 
-  const TabContent = () => {
+  // ✅ FIXED: useMemo returns JSX directly, no function wrapper
+  const tabContent = useMemo(() => {
     switch(activeTab) {
       case "tasks":
         return <TaskBoard workspaceId={id} userRole={profile?.role} />;
@@ -445,17 +414,15 @@ const fetchWorkspaceMembers = async (workspaceId) => {
       default:
         return <TaskBoard workspaceId={id} userRole={profile?.role} />;
     }
-  };
+  }, [activeTab, id, profile?.role, activities, workspaceMembers]);
 
   const calculateCompletionRate = () => {
     if (workspaceStats.totalTasks === 0) return 0;
     return Math.round((workspaceStats.completedTasks / workspaceStats.totalTasks) * 100);
   };
 
-  // Check if user can access create task tab
   const canCreateTask = profile?.role !== "client";
 
-  // Get user's role in this workspace
   const getUserWorkspaceRole = () => {
     if (workspaceMembers.length > 0) {
       const currentMember = workspaceMembers.find(
@@ -468,12 +435,10 @@ const fetchWorkspaceMembers = async (workspaceId) => {
 
   const userWorkspaceRole = getUserWorkspaceRole();
 
-  // Get workspace name - priority: workspaceData > currentWorkspace > Loading
   const getWorkspaceName = () => {
     return workspaceData?.name || currentWorkspace?.name || "Loading...";
   };
 
-  // Get workspace description
   const getWorkspaceDescription = () => {
     return workspaceData?.description || currentWorkspace?.description || "Project workspace";
   };
@@ -484,7 +449,6 @@ const fetchWorkspaceMembers = async (workspaceId) => {
       <div className="bg-white border-b border-red-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
-            {/* Workspace Info */}
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center flex-shrink-0">
@@ -500,7 +464,6 @@ const fetchWorkspaceMembers = async (workspaceId) => {
                 </div>
               </div>
               
-              {/* Real Stats */}
               {!loading && (
                 <div className="flex flex-wrap gap-3 mt-4">
                   <div className="px-3 py-2 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-lg">
@@ -555,15 +518,8 @@ const fetchWorkspaceMembers = async (workspaceId) => {
               )}
             </div>
 
-            {/* Role Badge */}
             {userWorkspaceRole && (
-              <div className={`px-4 py-2 rounded-lg font-medium ${
-                userWorkspaceRole === "admin" 
-                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white' 
-                  : userWorkspaceRole === "client"
-                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white'
-                  : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
-              }`}>
+              <div className="px-4 py-2 rounded-lg font-medium bg-gradient-to-r from-red-500 to-red-600 text-white">
                 <span className="text-sm">
                   {userWorkspaceRole === "admin" 
                     ? "Administrator" 
@@ -580,10 +536,8 @@ const fetchWorkspaceMembers = async (workspaceId) => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Tab Navigation */}
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-            {/* Desktop Tabs */}
             <div className="hidden sm:flex rounded-lg bg-red-100 p-1">
               {tabs.map((tab) => {
                 if (tab.id === "create" && !canCreateTask) {
@@ -606,7 +560,6 @@ const fetchWorkspaceMembers = async (workspaceId) => {
               })}
             </div>
 
-            {/* Mobile Select */}
             <div className="sm:hidden">
               <select
                 value={activeTab}
@@ -618,7 +571,7 @@ const fetchWorkspaceMembers = async (workspaceId) => {
                     return null;
                   }
                   return (
-                    <option key={tab.id} value={tab.id} className="flex items-center gap-2">
+                    <option key={tab.id} value={tab.id}>
                       {tab.label}
                     </option>
                   );
@@ -626,7 +579,6 @@ const fetchWorkspaceMembers = async (workspaceId) => {
               </select>
             </div>
 
-            {/* Navigation Controls */}
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
@@ -658,7 +610,6 @@ const fetchWorkspaceMembers = async (workspaceId) => {
             </div>
           </div>
 
-          {/* Tab Indicator */}
           <div className="flex items-center gap-2">
             {tabs.map((tab, index) => {
               if (tab.id === "create" && !canCreateTask) {
@@ -706,7 +657,6 @@ const fetchWorkspaceMembers = async (workspaceId) => {
             transition={{ duration: 0.2 }}
             className="bg-white rounded-xl border border-red-200 shadow-sm overflow-hidden"
           >
-            {/* Content Header */}
             <div className="px-6 py-4 border-b border-red-200 bg-red-50/50">
               <div className="flex items-center justify-between">
                 <div>
@@ -724,9 +674,9 @@ const fetchWorkspaceMembers = async (workspaceId) => {
               </div>
             </div>
 
-            {/* Dynamic Content */}
+            {/* ✅ FIXED: Direct render, no function call */}
             <div className="p-0">
-              <TabContent />
+              {tabContent}
             </div>
           </motion.div>
         </AnimatePresence>
