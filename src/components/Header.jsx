@@ -231,7 +231,7 @@ export default function Header() {
                       </span>
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">{getUserDisplayName() | getUserDisplayRole()}</p>
+                      <p className="font-semibold text-gray-900">{getUserDisplayName()} | {getUserDisplayRole()}</p>
                       <p className="text-sm text-gray-500 truncate">{user.email}</p>
                     </div>
                   </div>
