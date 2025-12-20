@@ -26,7 +26,8 @@ import {
   FiClock,
   FiRefreshCw,
   FiHeart,
-  FiStar
+  FiStar,
+  FiBell
 } from "react-icons/fi";
 
 import { AuthContext } from "./context/AuthContext";
@@ -245,6 +246,12 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
   const [conversationAdmins, setConversationAdmins] = useState({});
   const [conversationOwner, setConversationOwner] = useState({});
   
+  // ✅ FIX #1: Single loading state for messages
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  
+  // ✅ FIX #5: Unread messages count
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState({});
+  
   // Online status states
   const [onlineUsers, setOnlineUsers] = useState(new Set());
   const [typingUsers, setTypingUsers] = useState({});
@@ -257,10 +264,9 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
   const [showAddMembers, setShowAddMembers] = useState(false);
   const [membersToAdd, setMembersToAdd] = useState([]);
 
-  // ✅ SIMPLIFIED LOADING STATES - FIX #1
+  // ✅ FIX #1: SIMPLIFIED LOADING STATES
   const [isLoading, setIsLoading] = useState({
     initial: true,
-    messages: false,
     members: false,
     conversations: false
   });
@@ -291,6 +297,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
   const messageInputRef = useRef(null);
   const messageChannelRef = useRef(null);
   const presenceChannelRef = useRef(null);
+  const globalChannelRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const lastTypingTimeRef = useRef(0);
   const groupNameInputRef = useRef(null);
@@ -667,6 +674,10 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
         supabase.removeChannel(messageChannelRef.current);
         messageChannelRef.current = null;
       }
+      if (globalChannelRef.current) {
+        supabase.removeChannel(globalChannelRef.current);
+        globalChannelRef.current = null;
+      }
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
@@ -678,6 +689,155 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
       isInitializedRef.current = false;
     };
   }, []);
+
+  // ✅ FIX #3: Setup global real-time listener for all conversations
+  useEffect(() => {
+    if (!workspaceId || !currentUser?.id) return;
+
+    console.log("🌍 Setting up global real-time listener");
+
+    // Global channel for all conversations in workspace
+    const globalChannel = supabase.channel(`workspace:${workspaceId}:global:messages`, {
+      config: {
+        broadcast: { self: false, ack: true },
+      },
+    });
+
+    globalChannel
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        async (payload) => {
+          const newMessage = payload.new;
+          
+          console.log("📨 Global new message received:", newMessage);
+          
+          // ✅ Agar message current active conversation ka hai
+          if (newMessage.conversation_id === activeConversation?.id) {
+            // Agar sender hum khud hain, ignore karo
+            if (newMessage.sender_id === currentUser.id) return;
+            
+            // Fetch sender info
+            try {
+              const { data: sender } = await supabase
+                .from('profiles')
+                .select('id, name, email')
+                .eq('id', newMessage.sender_id)
+                .single();
+
+              const messageWithSender = {
+                ...newMessage,
+                sender: sender || {
+                  id: newMessage.sender_id,
+                  name: "Unknown User",
+                  email: ""
+                }
+              };
+
+              // ✅ Message ko add karo
+              setMessages(prev => {
+                const exists = prev.some(m => m.id === newMessage.id);
+                if (exists) return prev;
+                return [...prev, messageWithSender];
+              });
+
+              // ✅ Mark as read
+              await markMessagesAsRead(newMessage.conversation_id);
+              
+            } catch (error) {
+              console.error("Error fetching sender:", error);
+            }
+          } else {
+            // ✅ Agar message dusre conversation ka hai
+            // Unread count update karo
+            setUnreadMessagesCount(prev => ({
+              ...prev,
+              [newMessage.conversation_id]: (prev[newMessage.conversation_id] || 0) + 1
+            }));
+            
+            // ✅ Conversations list ko refresh karo
+            loadConversations();
+            
+            // ✅ Desktop notification show karo
+            if (newMessage.sender_id !== currentUser.id) {
+              showDesktopNotification(newMessage);
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('🌍 Global channel status:', status);
+      });
+
+    globalChannelRef.current = globalChannel;
+
+    return () => {
+      if (globalChannelRef.current) {
+        supabase.removeChannel(globalChannelRef.current);
+        globalChannelRef.current = null;
+      }
+    };
+  }, [workspaceId, currentUser?.id, activeConversation?.id]);
+
+  // ✅ FIX #5: Desktop notification function
+  const showDesktopNotification = async (message) => {
+    // Notification permission check karo
+    if ("Notification" in window) {
+      if (Notification.permission === "default") {
+        await Notification.requestPermission();
+      }
+      
+      if (Notification.permission === "granted") {
+        // Conversation ka naam fetch karo
+        const conversation = conversations.find(c => c.id === message.conversation_id);
+        const conversationName = conversation?.name || 
+          (conversation?.is_group ? "Group Chat" : "Direct Message");
+        
+        // Sender ka naam fetch karo
+        let senderName = "Someone";
+        try {
+          const { data: sender } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('id', message.sender_id)
+            .single();
+          
+          if (sender) {
+            senderName = sender.name;
+          }
+        } catch (error) {
+          console.log("Could not fetch sender name");
+        }
+        
+        // Notification create karo
+        const notification = new Notification("New Message", {
+          body: `${senderName} in ${conversationName}: ${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}`,
+          icon: "/favicon.ico",
+          tag: `message_${message.id}`,
+          requireInteraction: false,
+          silent: false
+        });
+        
+        notification.onclick = () => {
+          window.focus();
+          // Agar conversation list me hai to us conversation ko active karo
+          const conv = conversations.find(c => c.id === message.conversation_id);
+          if (conv) {
+            setActiveConversation(conv);
+            // Unread count reset karo
+            setUnreadMessagesCount(prev => ({
+              ...prev,
+              [conv.id]: 0
+            }));
+          }
+        };
+      }
+    }
+  };
 
   // ✅ ENHANCED INITIAL LOAD: With progress tracking
   useEffect(() => {
@@ -721,7 +881,6 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
         // Step 5: Setup realtime
         setLoadingStep(4);
         setLoadingProgress(90);
-        await setupRealtimeServices();
         
         // Complete
         setLoadingStep(5);
@@ -745,23 +904,6 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     
     // Empty dependency array - only run once when component mounts
   }, []);
-
-  // ✅ ENHANCED: Functions to show specific loading states
-  const showMessageLoading = () => {
-    setIsLoading(prev => ({ ...prev, messages: true }));
-  };
-
-  const hideMessageLoading = () => {
-    setIsLoading(prev => ({ ...prev, messages: false }));
-  };
-
-  const showConversationLoading = () => {
-    setIsLoading(prev => ({ ...prev, conversations: true }));
-  };
-
-  const hideConversationLoading = () => {
-    setIsLoading(prev => ({ ...prev, conversations: false }));
-  };
 
   // Load workspace members with enhanced loading state
   const loadWorkspaceMembers = async () => {
@@ -812,7 +954,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
 
   // Load conversations with enhanced animations
   const loadConversations = async () => {
-    showConversationLoading();
+    setIsLoading(prev => ({ ...prev, conversations: true }));
     try {
       const { data: convData, error: convError } = await supabase
         .from("conversation_members")
@@ -848,7 +990,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
       console.error("Error loading conversations:", error);
       setConversations([]);
     } finally {
-      hideConversationLoading();
+      setIsLoading(prev => ({ ...prev, conversations: false }));
     }
   };
 
@@ -1022,12 +1164,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     }
   };
 
-  // Setup realtime services
-  const setupRealtimeServices = async () => {
-    // Already handled in setupPresence
-  };
-
-  // ✅ ENHANCED MESSAGE CHANNEL: Setup with smooth transitions
+  // ✅ FIX #1 & #2: Jab conversation change ho tab messages load karo
   useEffect(() => {
     if (!activeConversation?.id) {
       setMessages([]);
@@ -1044,23 +1181,31 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     console.log('🔄 Setting up realtime for conversation:', activeConversation.id);
     
     const initializeChat = async () => {
+      // ✅ FIX #1: Sirf ek loading state
+      setIsLoadingMessages(true);
+      
       // Cleanup existing channel
       if (messageChannelRef.current) {
         await supabase.removeChannel(messageChannelRef.current);
         messageChannelRef.current = null;
       }
       
-      // Load messages first with loading state
-      showMessageLoading();
+      // Load messages
       await loadMessages(activeConversation.id);
       
-      // Setup realtime subscription
-      setupRealtimeSubscription(activeConversation.id);
+      // Setup typing subscription
+      setupTypingSubscription(activeConversation.id);
       
       // Focus input with delay
       setTimeout(() => {
         messageInputRef.current?.focus();
       }, 400);
+      
+      // ✅ Unread count reset karo
+      setUnreadMessagesCount(prev => ({
+        ...prev,
+        [activeConversation.id]: 0
+      }));
     };
 
     initializeChat();
@@ -1072,6 +1217,70 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
       setTypingUsers({});
     };
   }, [activeConversation?.id]);
+
+  // Setup typing subscription
+  const setupTypingSubscription = (conversationId) => {
+    if (!conversationId || !currentUser?.id) return;
+
+    // Clean previous typing channel
+    if (messageChannelRef.current) {
+      supabase.removeChannel(messageChannelRef.current);
+    }
+
+    const channel = supabase.channel(`conversation:${conversationId}:typing`, {
+      config: {
+        broadcast: { self: false, ack: true },
+      },
+    });
+
+    channel
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        if (payload.user_id !== currentUser?.id && payload.conversation_id === conversationId) {
+          console.log('✍️ User typing:', payload.user_name);
+          setTypingUsers(prev => ({
+            ...prev,
+            [payload.user_id]: {
+              name: payload.user_name,
+              timestamp: Date.now(),
+              conversation_id: payload.conversation_id
+            }
+          }));
+
+          // Clear previous timeout for this user
+          if (typingTimeoutsRef.current[payload.user_id]) {
+            clearTimeout(typingTimeoutsRef.current[payload.user_id]);
+          }
+
+          // Set new timeout to clear typing indicator
+          typingTimeoutsRef.current[payload.user_id] = setTimeout(() => {
+            setTypingUsers(prev => {
+              const updated = { ...prev };
+              delete updated[payload.user_id];
+              return updated;
+            });
+            delete typingTimeoutsRef.current[payload.user_id];
+          }, 3000);
+        }
+      })
+      .on('broadcast', { event: 'typing_stop' }, ({ payload }) => {
+        if (payload.conversation_id === conversationId) {
+          setTypingUsers(prev => {
+            const updated = { ...prev };
+            delete updated[payload.user_id];
+            return updated;
+          });
+          
+          // Clear the timeout
+          if (typingTimeoutsRef.current[payload.user_id]) {
+            clearTimeout(typingTimeoutsRef.current[payload.user_id]);
+            delete typingTimeoutsRef.current[payload.user_id];
+          }
+        }
+      })
+      .subscribe();
+
+    messageChannelRef.current = channel;
+  };
 
   // Focus inputs when modals open with enhanced animations
   useEffect(() => {
@@ -1098,7 +1307,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     }
   }, [showAddMembers]);
 
-  // ✅ ENHANCED LOAD MESSAGES: With smooth animations
+  // ✅ FIX #1: ENHANCED LOAD MESSAGES: Single loading state
   const loadMessages = async (conversationId) => {
     try {
       console.log("📥 Loading messages for conversation:", conversationId);
@@ -1148,161 +1357,10 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
       setMessages([]);
     } finally {
       // Small delay for smooth transition
-      setTimeout(() => hideMessageLoading(), 300);
+      setTimeout(() => {
+        setIsLoadingMessages(false);
+      }, 300);
     }
-  };
-
-  // ✅ ENHANCED REALTIME SUBSCRIPTION
-  const setupRealtimeSubscription = (conversationId) => {
-    console.log('🔥 Setting up realtime subscription for:', conversationId);
-
-    // Unsubscribe from previous channel if exists
-    if (messageChannelRef.current) {
-      console.log('🗑️ Removing previous channel');
-      supabase.removeChannel(messageChannelRef.current);
-      messageChannelRef.current = null;
-    }
-
-    const channel = supabase.channel(`conversation:${conversationId}`, {
-      config: {
-        broadcast: {
-          self: false,
-          ack: true,
-        },
-      },
-    });
-
-    // Listen for INSERT events on messages table
-    channel
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
-        },
-        async (payload) => {
-          console.log('✅ NEW MESSAGE RECEIVED:', payload.new);
-
-          try {
-            // Fetch sender info
-            const { data: sender, error } = await supabase
-              .from('profiles')
-              .select('id, name, email')
-              .eq('id', payload.new.sender_id)
-              .single();
-
-            if (error) {
-              console.error('❌ Error fetching sender:', error);
-            }
-
-            const newMessage = {
-              ...payload.new,
-              sender: sender || {
-                id: payload.new.sender_id,
-                name: "Unknown User",
-                email: ""
-              }
-            };
-
-            // Add message to state with animation
-            setMessages(prev => {
-              const exists = prev.some(m => m.id === newMessage.id);
-              if (exists) {
-                console.log("⚠️ Message already exists, skipping");
-                return prev;
-              }
-
-              console.log("➕ Adding new message to state");
-              return [...prev, newMessage];
-            });
-
-            // Update conversation list
-            await loadConversations();
-            
-          } catch (error) {
-            console.error('❌ Error processing new message:', error);
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
-        },
-        (payload) => {
-          console.log('🗑️ MESSAGE DELETED:', payload.old);
-          
-          // Remove message from state
-          setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
-          
-          // Update conversation list
-          loadConversations();
-        }
-      )
-      .on('broadcast', { event: 'typing' }, ({ payload }) => {
-        if (payload.user_id !== currentUser?.id && payload.conversation_id === conversationId) {
-          console.log('✍️ User typing:', payload.user_name);
-          setTypingUsers(prev => ({
-            ...prev,
-            [payload.user_id]: {
-              name: payload.user_name,
-              timestamp: Date.now(),
-              conversation_id: payload.conversation_id
-            }
-          }));
-
-          // Clear previous timeout for this user
-          if (typingTimeoutsRef.current[payload.user_id]) {
-            clearTimeout(typingTimeoutsRef.current[payload.user_id]);
-          }
-
-          // Set new timeout to clear typing indicator
-          typingTimeoutsRef.current[payload.user_id] = setTimeout(() => {
-            setTypingUsers(prev => {
-              const updated = { ...prev };
-              delete updated[payload.user_id];
-              return updated;
-            });
-            delete typingTimeoutsRef.current[payload.user_id];
-          }, 3000);
-        }
-      })
-      .on('broadcast', { event: 'typing_stop' }, ({ payload }) => {
-        if (payload.conversation_id === conversationId) {
-          setTypingUsers(prev => {
-            const updated = { ...prev };
-            delete updated[payload.user_id];
-            return updated;
-          });
-          
-          // Clear the timeout
-          if (typingTimeoutsRef.current[payload.user_id]) {
-            clearTimeout(typingTimeoutsRef.current[payload.user_id]);
-            delete typingTimeoutsRef.current[payload.user_id];
-          }
-        }
-      })
-      .subscribe((status, err) => {
-        console.log('📡 Realtime channel status:', status);
-        
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Successfully subscribed to conversation messages');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Channel error:', err);
-        } else if (status === 'TIMED_OUT') {
-          console.error('⏱️ Channel timed out');
-        } else if (status === 'CLOSED') {
-          console.log('🔒 Channel closed');
-        }
-      });
-
-    messageChannelRef.current = channel;
-    return channel;
   };
 
   // Mark messages as read
@@ -1347,7 +1405,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     }
   };
 
-  // ✅ ENHANCED: Delete message function with animation
+  // ✅ FIX #4: ENHANCED: Delete message function with animation
   const deleteMessage = async (message) => {
     if (!message || message.sender_id !== currentUser?.id) {
       setError("You can only delete your own messages");
@@ -1469,23 +1527,16 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     setEditingGroupName(e.target.value);
   };
 
-  // ✅ ENHANCED SEND MESSAGE: With advanced animations
+  // ✅ FIX #4: ENHANCED SEND MESSAGE: With proper real-time sync
   const sendMessage = async () => {
     if (!newMessage.trim() || !activeConversation || messageLoading) return;
 
     const messageContent = newMessage.trim();
     const tempId = `temp_${Date.now()}`;
     
-    // Create sending animation
-    const sendButton = document.querySelector('button[onClick*="sendMessage"]');
-    if (sendButton) {
-      sendButton.classList.add('animate-pulse-slow');
-    }
-
-    // Enhanced optimistic update with ripple effect
+    // ✅ Optimistic update
     const optimisticMessage = {
-      id: null,
-      temp_id: tempId,
+      id: tempId,
       conversation_id: activeConversation.id,
       sender_id: currentUser.id,
       content: messageContent,
@@ -1501,16 +1552,6 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     setMessages(prev => [...prev, optimisticMessage]);
     setNewMessage("");
     setMessageLoading(true);
-    
-    // Create ripple effect
-    if (messageInputRef.current) {
-      const ripple = document.createElement('div');
-      ripple.className = 'absolute inset-0 bg-red-500/20 rounded-full animate-ripple';
-      ripple.style.pointerEvents = 'none';
-      messageInputRef.current.parentElement.style.position = 'relative';
-      messageInputRef.current.parentElement.appendChild(ripple);
-      setTimeout(() => ripple.remove(), 1000);
-    }
 
     // Clear typing indicator
     if (typingTimeoutRef.current) {
@@ -1545,14 +1586,15 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
 
       console.log("✅ Message saved:", data.id);
 
-      // Replace optimistic message with real one
+      // ✅ Optimistic message ko real message se replace karo
       setMessages(prev => prev.map(msg => 
-        msg.temp_id === tempId 
-          ? { ...data, sender: optimisticMessage.sender }
-          : msg
+        msg.id === tempId ? { 
+          ...data, 
+          sender: optimisticMessage.sender 
+        } : msg
       ));
 
-      // Update conversation
+      // ✅ Conversation update karo
       await supabase
         .from("conversations")
         .update({ 
@@ -1561,35 +1603,16 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
         })
         .eq("id", activeConversation.id);
 
+      // ✅ Conversation list ko refresh karo
       await loadConversations();
-      
-      // Success animation
-      if (sendButton) {
-        sendButton.classList.add('animate-bounce-subtle');
-        setTimeout(() => {
-          sendButton.classList.remove('animate-bounce-subtle');
-          sendButton.classList.remove('animate-pulse-slow');
-        }, 1000);
-      }
       
     } catch (error) {
       console.error("❌ Error sending message:", error);
       
-      // Remove optimistic message on error with shake animation
-      setMessages(prev => prev.filter(msg => msg.temp_id !== tempId));
+      // ✅ Optimistic message hatao agar error aya to
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
       setNewMessage(messageContent);
       setError("Message failed to send");
-      
-      // Shake animation for error
-      if (messageInputRef.current) {
-        messageInputRef.current.classList.add('animate-shake');
-        setTimeout(() => messageInputRef.current.classList.remove('animate-shake'), 500);
-      }
-      
-      // Remove pulse animation
-      if (sendButton) {
-        sendButton.classList.remove('animate-pulse-slow');
-      }
       
       setTimeout(() => setError(null), 3000);
     } finally {
@@ -1603,6 +1626,17 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
       e.preventDefault();
       sendMessage();
     }
+  };
+
+  // ✅ FIX #5: Conversation select handler with unread count reset
+  const handleConversationSelect = async (conversation) => {
+    setActiveConversation(conversation);
+    
+    // ✅ Unread count reset karo
+    setUnreadMessagesCount(prev => ({
+      ...prev,
+      [conversation.id]: 0
+    }));
   };
 
   // Create one-on-one conversation with animation
@@ -1636,7 +1670,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
           .single();
         
         if (convData) {
-          setActiveConversation(convData);
+          handleConversationSelect(convData);
           setShowMemberSearch(false);
           return;
         }
@@ -1670,7 +1704,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
 
       await loadConversations();
       
-      setActiveConversation(newConv);
+      handleConversationSelect(newConv);
       setShowMemberSearch(false);
       
       setTimeout(() => {
@@ -1741,7 +1775,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
 
       await loadConversations();
       
-      setActiveConversation(newConv);
+      handleConversationSelect(newConv);
       setSelectedMembers([]);
       setGroupName("");
       setShowGroupCreator(false);
@@ -2312,14 +2346,13 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ 
         behavior: "smooth",
-        block: "nearest" // Changed from "end" to "nearest" - FIX #3: Prevent excessive scrolling
+        block: "nearest"
       });
     }
   };
 
-  // ✅ FIXED: Auto-scroll only when necessary - FIX #3
+  // ✅ FIXED: Auto-scroll only when necessary
   useEffect(() => {
-    // Only scroll if the user is near the bottom of the chat
     const messagesContainer = document.querySelector('.messages-container');
     if (messagesContainer) {
       const isNearBottom = messagesContainer.scrollHeight - messagesContainer.clientHeight <= messagesContainer.scrollTop + 100;
@@ -2327,7 +2360,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
         scrollToBottom();
       }
     }
-  }, [messages]); // Only run when messages change, not typingUsers
+  }, [messages]);
 
   const isUserOnline = (userId) => {
     return onlineUsers.has(userId?.toString());
@@ -2433,9 +2466,9 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     setSearchQuery("");
   };
 
-  // ✅ FIX #1: Simple message loading
+  // ✅ FIX #1: Simple message loading with single loading state
   const renderMessageArea = () => {
-    if (isLoading.messages) {
+    if (isLoadingMessages) {
       return (
         <div className="flex-1 overflow-y-auto p-4 lg:p-6 messages-container">
           <div className="flex items-center justify-center h-full">
@@ -2462,7 +2495,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
               
               return (
                 <div
-                  key={message.id || message.temp_id}
+                  key={message.id || `temp_${index}`}
                   className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} ${showAvatar ? 'mt-4 lg:mt-6' : 'mt-2 lg:mt-3'}`}
                 >
                   <div className={`max-w-[85%] lg:max-w-2xl ${isCurrentUser ? 'ml-auto' : ''}`}>
@@ -2493,7 +2526,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                       isCurrentUser
                         ? 'bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-br-none shadow-lg hover:shadow-xl transition-all duration-300'
                         : 'bg-white border border-red-200 rounded-bl-none shadow-sm hover:shadow-md transition-all duration-300'
-                    } ${message.id ? '' : 'opacity-70'}`}>
+                    } ${message.id && message.id.startsWith('temp_') ? 'opacity-70' : ''}`}>
                       <p className="break-words text-sm lg:text-base">{message.content}</p>
                       <div className={`flex items-center justify-end gap-2 mt-2 ${
                         isCurrentUser ? 'text-red-200' : 'text-red-600/70'
@@ -2512,15 +2545,15 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                           <FiCheckCircle className="w-4 h-4 lg:w-5 lg:h-5" title="Read" />
                         )}
                       </div>
-                      {isCurrentUser && (
-  <button
-    onClick={() => showDeleteMessageConfirmation(message)}
-    className="absolute -top-2 -right-2 w-8 h-8 bg-white border border-red-200 rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-300 opacity-0 group-hover:opacity-100 shadow-sm"
-    title="Delete message"
-  >
-    <FiTrash2 className="w-3.5 h-3.5" />
-  </button>
-)}
+                      {isCurrentUser && !message.id.startsWith('temp_') && (
+                        <button
+                          onClick={() => showDeleteMessageConfirmation(message)}
+                          className="absolute -top-2 -right-2 w-8 h-8 bg-white border border-red-200 rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-300 opacity-0 group-hover:opacity-100 shadow-sm"
+                          title="Delete message"
+                        >
+                          <FiTrash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2570,12 +2603,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
         <div className="p-4">
           <h3 className="font-bold text-gray-900 text-lg mb-4 px-2">Your Conversations</h3>
           {conversations.map((conv, index) => {
-            const unreadCount = messages.filter(msg => 
-              msg.conversation_id === conv.id && 
-              !msg.read_by?.includes(currentUser?.id) &&
-              msg.sender_id !== currentUser?.id
-            ).length;
-
+            const unreadCount = unreadMessagesCount[conv.id] || 0;
             const otherMemberName = getOtherMemberName(conv);
             const convMembers = getConversationMembers(conv.id);
             const memberCount = convMembers.length;
@@ -2586,7 +2614,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
             return (
               <div
                 key={conv.id}
-                onClick={() => setActiveConversation(conv)}
+                onClick={() => handleConversationSelect(conv)}
                 className={`group p-4 rounded-2xl cursor-pointer transition-all duration-300 mb-3 animate-slide-in ${
                   activeConversation?.id === conv.id
                     ? 'bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-500 shadow-lg animate-pulse-glow'
@@ -2637,7 +2665,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                       </p>
                       {unreadCount > 0 && (
                         <span className="bg-gradient-to-r from-red-500 to-pink-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center ml-2 flex-shrink-0 shadow-sm animate-pulse-glow">
-                          {unreadCount}
+                          {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                       )}
                     </div>
@@ -2706,18 +2734,6 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
           progress={loadingProgress}
           subMessage={loadingStep < loadingSteps.length - 1 ? "Please wait..." : "Almost ready!"}
         />
-      )}
-
-      {/* Message Loading Overlay (when switching conversations) */}
-      {isLoading.messages && !isLoading.initial && (
-        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-40 flex items-center justify-center animate-fade-in">
-          <div className="text-center">
-            <SimpleLoader size="large" />
-            <p className="text-red-600/70 mt-4 text-sm font-medium animate-pulse-slow">
-              Loading conversation...
-            </p>
-          </div>
-        </div>
       )}
 
       {/* Confirmation Modal */}
@@ -3578,7 +3594,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
               <div className="sticky top-0 bg-gradient-to-b from-white to-red-50/70 p-4 lg:p-6 border-b border-red-200 shadow-sm z-10 backdrop-blur-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 lg:gap-4">
-                    {isLoading.messages ? (
+                    {isLoadingMessages ? (
                       <div className="flex items-center gap-3 lg:gap-4">
                         <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl bg-gradient-to-r from-red-100 to-pink-100 shimmer animate-pulse-slow"></div>
                         <div className="space-y-2">
@@ -3669,9 +3685,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
               {/* Messages Area */}
               {renderMessageArea()}
 
-              
-
-              {/* ✅ FIX #2: Message Input fixed at bottom of chat area, not whole website */}
+              {/* Message Input */}
               <div className="bg-gradient-to-t from-white to-red-50/70 p-4 lg:p-6 bottom-0 top-0 mt-64 border-t border-red-200 shadow-lg backdrop-blur-sm animate-slide-up">
                 {getTypingUsersText() && (
                   <div className="mb-3 lg:mb-4 flex items-center gap-2 text-red-600 bg-red-50 px-4 py-2 rounded-xl animate-slide-in">
@@ -3695,11 +3709,11 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                     onKeyDown={handleKeyPress}
                     placeholder={`Message ${getOtherMemberName(activeConversation)}...`}
                     className="flex-1 px-4 lg:px-6 py-3 lg:py-4 border border-red-300 rounded-xl lg:rounded-2xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none text-sm lg:text-base bg-white placeholder-red-300 transition-all-300"
-                    disabled={messageLoading || isLoading.messages}
+                    disabled={messageLoading || isLoadingMessages}
                   />
                   <button
                     onClick={sendMessage}
-                    disabled={!newMessage.trim() || messageLoading || isLoading.messages}
+                    disabled={!newMessage.trim() || messageLoading || isLoadingMessages}
                     className="p-3 lg:p-4 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl lg:rounded-2xl hover:shadow-lg transition-all-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden"
                   >
                     {messageLoading ? (
@@ -3762,7 +3776,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                       <FiChevronLeft className="w-6 h-6 text-red-600" />
                     </button>
                     <div className="flex items-center gap-3">
-                      {isLoading.messages ? (
+                      {isLoadingMessages ? (
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-red-100 to-pink-100 shimmer animate-pulse-slow"></div>
                           <div className="space-y-2">
@@ -3821,7 +3835,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                 </div>
               </div>
 
-              {isLoading.messages ? (
+              {isLoadingMessages ? (
                 <div className="flex-1 overflow-y-auto p-4">
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
@@ -3843,7 +3857,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                         
                         return (
                           <div
-                            key={message.id || message.temp_id}
+                            key={message.id || `temp_${index}`}
                             className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} ${showAvatar ? 'mt-6' : 'mt-2'}`}
                           >
                             <div className={`max-w-[85%] ${isCurrentUser ? 'ml-auto' : ''}`}>
@@ -3864,7 +3878,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                                 isCurrentUser
                                   ? 'bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-br-none shadow-lg'
                                   : 'bg-white border border-red-200 rounded-bl-none shadow-sm'
-                              } ${message.id ? '' : 'opacity-70'}`}>
+                              } ${message.id && message.id.startsWith('temp_') ? 'opacity-70' : ''}`}>
                                 <p className="break-words text-sm">{message.content}</p>
                                 <div className={`flex items-center justify-end gap-2 mt-2 ${
                                   isCurrentUser ? 'text-red-200' : 'text-red-600/70'
@@ -3904,7 +3918,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                 </div>
               )}
 
-              {/* ✅ FIX #2: Mobile message input fixed at bottom of chat area */}
+              {/* Mobile message input fixed at bottom of chat area */}
               <div className="sticky bottom-0 bg-white p-4 border-t border-red-200 shadow-lg">
                 <div className="flex items-center gap-2">
                   <input
@@ -3915,11 +3929,11 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                     onKeyDown={handleKeyPress}
                     placeholder={`Message...`}
                     className="flex-1 px-4 py-3 border border-red-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none text-sm placeholder-red-300"
-                    disabled={messageLoading || isLoading.messages}
+                    disabled={messageLoading || isLoadingMessages}
                   />
                   <button
                     onClick={sendMessage}
-                    disabled={!newMessage.trim() || messageLoading || isLoading.messages}
+                    disabled={!newMessage.trim() || messageLoading || isLoadingMessages}
                     className="p-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {messageLoading ? (
