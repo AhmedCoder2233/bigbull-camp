@@ -108,81 +108,20 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirm
   );
 };
 
-// ✅ ENHANCED LOADING COMPONENTS
-const LoadingAnimation = ({ type = "spinner", size = "medium", className = "" }) => {
+// ✅ SIMPLE LOADER COMPONENT - FIX #1: Simple responsive loader
+const SimpleLoader = ({ size = "medium", className = "" }) => {
   const sizes = {
     small: "w-6 h-6",
-    medium: "w-12 h-12",
-    large: "w-16 h-16",
-    xlarge: "w-24 h-24"
+    medium: "w-8 h-8",
+    large: "w-12 h-12",
+    xlarge: "w-16 h-16"
   };
 
-  const themes = {
-    red: "from-red-500 to-rose-500",
-    pink: "from-pink-500 to-rose-500",
-    white: "from-white/90 to-white/70"
-  };
-
-  if (type === "spinner") {
-    return (
-      <div className={`relative ${sizes[size]} ${className}`}>
-        {/* Outer glow */}
-        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-red-400/30 to-rose-400/30 animate-ping-slow"></div>
-        
-        {/* Main spinner */}
-        <div className="relative w-full h-full">
-          <div className={`absolute inset-0 rounded-full bg-gradient-to-r ${themes.red} animate-gradient-shift opacity-80`}></div>
-          <div className="absolute inset-[3px] bg-white rounded-full"></div>
-          <div className={`absolute inset-[3px] rounded-full border-[3px] border-transparent border-t-gradient-to-r ${themes.red} animate-spin-gentle`}></div>
-        </div>
-        
-        {/* Inner dot */}
-        <div className="absolute inset-1/4 rounded-full bg-gradient-to-r from-red-500 to-rose-500 animate-pulse-slow"></div>
-      </div>
-    );
-  }
-
-  if (type === "dots") {
-    return (
-      <div className={`flex items-center gap-2 ${className}`}>
-        {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className={`w-3 h-3 rounded-full bg-gradient-to-r ${themes.red} animate-typing-dot`}
-            style={{ animationDelay: `${(i - 1) * 0.2}s` }}
-          ></div>
-        ))}
-      </div>
-    );
-  }
-
-  if (type === "pulse") {
-    return (
-      <div className={`relative ${sizes[size]} ${className}`}>
-        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-red-500/40 to-rose-500/40 animate-pulse-slow"></div>
-        <div className={`absolute inset-2 rounded-full bg-gradient-to-r ${themes.red} animate-pulse-slow`}></div>
-      </div>
-    );
-  }
-
-  if (type === "bars") {
-    return (
-      <div className={`flex items-center justify-center gap-1 ${className}`}>
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div
-            key={i}
-            className="w-1.5 bg-gradient-to-b from-red-500 to-rose-500 rounded-full animate-bar-wave"
-            style={{ 
-              animationDelay: `${(i - 1) * 0.1}s`,
-              height: `${i * 8}px`
-            }}
-          ></div>
-        ))}
-      </div>
-    );
-  }
-
-  return null;
+  return (
+    <div className={`flex items-center justify-center ${className}`}>
+      <div className={`${sizes[size]} border-3 border-red-100 border-t-red-600 rounded-full animate-spin`}></div>
+    </div>
+  );
 };
 
 const LoadingOverlay = ({ message = "Loading...", progress, subMessage }) => (
@@ -197,15 +136,9 @@ const LoadingOverlay = ({ message = "Loading...", progress, subMessage }) => (
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-border-flow"></div>
         
         <div className="flex flex-col items-center text-center">
-          {/* Main loader */}
+          {/* Main loader - using simple loader */}
           <div className="relative mb-6">
-            <LoadingAnimation type="spinner" size="xlarge" />
-            
-            {/* Floating dots */}
-            <div className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 animate-float" 
-              style={{ animationDelay: '0.2s' }}></div>
-            <div className="absolute -bottom-2 -left-2 w-3 h-3 rounded-full bg-gradient-to-r from-red-500 to-pink-500 animate-float" 
-              style={{ animationDelay: '0.4s' }}></div>
+            <SimpleLoader size="xlarge" />
           </div>
           
           {/* Text content */}
@@ -237,11 +170,6 @@ const LoadingOverlay = ({ message = "Loading...", progress, subMessage }) => (
                 </p>
               </div>
             )}
-            
-            {/* Loading dots for indication */}
-            <div className="flex justify-center pt-2">
-              <LoadingAnimation type="dots" />
-            </div>
           </div>
         </div>
       </div>
@@ -329,7 +257,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
   const [showAddMembers, setShowAddMembers] = useState(false);
   const [membersToAdd, setMembersToAdd] = useState([]);
 
-  // ✅ ENHANCED LOADING STATES
+  // ✅ SIMPLIFIED LOADING STATES - FIX #1
   const [isLoading, setIsLoading] = useState({
     initial: true,
     messages: false,
@@ -413,8 +341,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
       }
       to { 
         transform: translateX(0); 
-        opacity: 1; 
-      }
+        opacity: 1; }
     }
     
     @keyframes scale-in {
@@ -734,9 +661,11 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
       console.log("🧹 Component unmounting - cleaning up all channels");
       if (presenceChannelRef.current) {
         supabase.removeChannel(presenceChannelRef.current);
+        presenceChannelRef.current = null;
       }
       if (messageChannelRef.current) {
         supabase.removeChannel(messageChannelRef.current);
+        messageChannelRef.current = null;
       }
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
@@ -745,12 +674,22 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
       Object.values(typingTimeoutsRef.current).forEach(timeout => {
         clearTimeout(timeout);
       });
+      // Reset initialization flag
+      isInitializedRef.current = false;
     };
   }, []);
 
   // ✅ ENHANCED INITIAL LOAD: With progress tracking
   useEffect(() => {
-    if (!workspaceId || !currentUser?.id || isInitializedRef.current) {
+    // Prevent re-initialization if already initialized
+    if (isInitializedRef.current) {
+      console.log("⚠️ Already initialized, skipping...");
+      return;
+    }
+
+    // Check required dependencies
+    if (!workspaceId || !currentUser?.id) {
+      console.log("⚠️ Missing workspaceId or currentUser, waiting...");
       return;
     }
 
@@ -798,11 +737,14 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
       } catch (error) {
         console.error("❌ Error in loading flow:", error);
         setError("Failed to initialize workspace");
+        isInitializedRef.current = false; // Reset on error
       }
     };
 
     startLoadingFlow();
-  }, [workspaceId, currentUser?.id]);
+    
+    // Empty dependency array - only run once when component mounts
+  }, []);
 
   // ✅ ENHANCED: Functions to show specific loading states
   const showMessageLoading = () => {
@@ -2370,15 +2312,22 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ 
         behavior: "smooth",
-        block: "end"
+        block: "nearest" // Changed from "end" to "nearest" - FIX #3: Prevent excessive scrolling
       });
     }
   };
 
-  // Auto-scroll when messages change
+  // ✅ FIXED: Auto-scroll only when necessary - FIX #3
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, typingUsers]);
+    // Only scroll if the user is near the bottom of the chat
+    const messagesContainer = document.querySelector('.messages-container');
+    if (messagesContainer) {
+      const isNearBottom = messagesContainer.scrollHeight - messagesContainer.clientHeight <= messagesContainer.scrollTop + 100;
+      if (isNearBottom) {
+        scrollToBottom();
+      }
+    }
+  }, [messages]); // Only run when messages change, not typingUsers
 
   const isUserOnline = (userId) => {
     return onlineUsers.has(userId?.toString());
@@ -2484,20 +2433,18 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     setSearchQuery("");
   };
 
-  // ✅ ENHANCED: Loading indicator in message area
+  // ✅ FIX #1: Simple message loading
   const renderMessageArea = () => {
     if (isLoading.messages) {
       return (
-        <div className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <div className="stagger space-y-4 lg:space-y-6">
-            <LoadingSkeleton type="message" count={3} />
-            <div className="text-center py-8">
-              <LoadingAnimation type="dots" className="mx-auto" />
-              <p className="text-red-600/70 mt-4 text-sm animate-pulse-slow">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-6 messages-container">
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <SimpleLoader size="large" className="mb-4" />
+              <p className="text-red-600/70 text-sm">
                 Loading messages...
               </p>
             </div>
-            <LoadingSkeleton type="message" count={2} />
           </div>
         </div>
       );
@@ -2505,7 +2452,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
 
     if (messages.length > 0) {
       return (
-        <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-6 messages-container">
           <div className="space-y-4 lg:space-y-6 stagger">
             {messages.map((message, index) => {
               const isCurrentUser = message.sender_id === currentUser?.id;
@@ -2577,7 +2524,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     }
 
     return (
-      <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+      <div className="flex-1 overflow-y-auto p-4 lg:p-6 messages-container">
         <div className="text-center py-12 lg:py-24 animate-slide-up">
           <div className="w-24 h-24 lg:w-32 lg:h-32 mx-auto mb-6 lg:mb-10 rounded-full bg-gradient-to-br from-red-50 to-pink-50 flex items-center justify-center animate-float">
             <FiMessageSquare className="w-12 h-12 lg:w-16 lg:h-16 text-red-400" />
@@ -2596,13 +2543,15 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     );
   };
 
-  // ✅ ENHANCED: Loading indicator in conversation list
+  // ✅ FIX #1: Simple conversation loading
   const renderConversationList = () => {
     if (isLoading.conversations) {
       return (
         <div className="p-4">
           <h3 className="font-bold text-gray-900 text-lg mb-4 px-2">Your Conversations</h3>
-          <LoadingSkeleton type="conversation" count={4} />
+          <div className="flex items-center justify-center py-8">
+            <SimpleLoader size="medium" />
+          </div>
         </div>
       );
     }
@@ -2737,7 +2686,6 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     );
   };
 
-  // Add CSS animations
   return (
     <>
       <style>{styles}</style>
@@ -2755,7 +2703,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
       {isLoading.messages && !isLoading.initial && (
         <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-40 flex items-center justify-center animate-fade-in">
           <div className="text-center">
-            <LoadingAnimation type="spinner" size="large" />
+            <SimpleLoader size="large" />
             <p className="text-red-600/70 mt-4 text-sm font-medium animate-pulse-slow">
               Loading conversation...
             </p>
@@ -3502,7 +3450,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                   <div className="flex items-center gap-2 mt-2">
                     {connectionStatus === 'connecting' ? (
                       <div className="flex items-center gap-2">
-                        <LoadingAnimation type="dots" size="small" />
+                        <SimpleLoader size="small" />
                         <span className="text-sm text-red-600/70 animate-pulse-slow">
                           Connecting...
                         </span>
@@ -3712,11 +3660,15 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
               {/* Messages Area */}
               {renderMessageArea()}
 
-              {/* Message Input with Loading State */}
-              <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-white to-red-50/70 p-4 lg:p-6 border-t border-red-200 shadow-lg backdrop-blur-sm animate-slide-up">
+              {/* ✅ FIX #2: Message Input fixed at bottom of chat area, not whole website */}
+              <div className="sticky bottom-0 bg-gradient-to-t from-white to-red-50/70 p-4 lg:p-6 border-t border-red-200 shadow-lg backdrop-blur-sm animate-slide-up">
                 {getTypingUsersText() && (
                   <div className="mb-3 lg:mb-4 flex items-center gap-2 text-red-600 bg-red-50 px-4 py-2 rounded-xl animate-slide-in">
-                    <LoadingAnimation type="dots" />
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 bg-red-600 rounded-full animate-typing-dot"></span>
+                      <span className="w-2 h-2 bg-red-600 rounded-full animate-typing-dot" style={{ animationDelay: '0.2s' }}></span>
+                      <span className="w-2 h-2 bg-red-600 rounded-full animate-typing-dot" style={{ animationDelay: '0.4s' }}></span>
+                    </div>
                     <span className="font-medium text-sm lg:text-base animate-wave">
                       {getTypingUsersText()}
                     </span>
@@ -3740,7 +3692,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                     className="p-3 lg:p-4 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl lg:rounded-2xl hover:shadow-lg transition-all-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden"
                   >
                     {messageLoading ? (
-                      <LoadingAnimation type="spinner" size="small" className="text-white" />
+                      <SimpleLoader size="small" className="text-white" />
                     ) : (
                       <FiSend className="w-5 h-5 lg:w-6 lg:h-6 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                     )}
@@ -3860,15 +3812,13 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
 
               {isLoading.messages ? (
                 <div className="flex-1 overflow-y-auto p-4">
-                  <div className="stagger space-y-4">
-                    <LoadingSkeleton type="message" count={3} />
-                    <div className="text-center py-8">
-                      <LoadingAnimation type="dots" className="mx-auto" />
-                      <p className="text-red-600/70 mt-4 text-sm animate-pulse-slow">
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <SimpleLoader size="medium" className="mb-4" />
+                      <p className="text-red-600/70 text-sm">
                         Loading messages...
                       </p>
                     </div>
-                    <LoadingSkeleton type="message" count={2} />
                   </div>
                 </div>
               ) : (
@@ -3943,6 +3893,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                 </div>
               )}
 
+              {/* ✅ FIX #2: Mobile message input fixed at bottom of chat area */}
               <div className="sticky bottom-0 bg-white p-4 border-t border-red-200 shadow-lg">
                 <div className="flex items-center gap-2">
                   <input
@@ -3961,7 +3912,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                     className="p-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {messageLoading ? (
-                      <LoadingAnimation type="spinner" size="small" className="text-white" />
+                      <SimpleLoader size="small" className="text-white" />
                     ) : (
                       <FiSend className="w-5 h-5" />
                     )}
@@ -3980,7 +3931,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                       <div className="flex items-center gap-2 mt-2">
                         {connectionStatus === 'connecting' ? (
                           <div className="flex items-center gap-2">
-                            <LoadingAnimation type="dots" size="small" />
+                            <SimpleLoader size="small" />
                             <span className="text-sm text-red-600/70 animate-pulse-slow">
                               Connecting...
                             </span>
