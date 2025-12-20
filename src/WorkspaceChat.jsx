@@ -2512,6 +2512,15 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                           <FiCheckCircle className="w-4 h-4 lg:w-5 lg:h-5" title="Read" />
                         )}
                       </div>
+                      {isCurrentUser && (
+  <button
+    onClick={() => showDeleteMessageConfirmation(message)}
+    className="absolute -top-2 -right-2 w-8 h-8 bg-white border border-red-200 rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-300 opacity-0 group-hover:opacity-100 shadow-sm"
+    title="Delete message"
+  >
+    <FiTrash2 className="w-3.5 h-3.5" />
+  </button>
+)}
                     </div>
                   </div>
                 </div>
@@ -3660,8 +3669,10 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
               {/* Messages Area */}
               {renderMessageArea()}
 
+              
+
               {/* ✅ FIX #2: Message Input fixed at bottom of chat area, not whole website */}
-              <div className="sticky bottom-0 bg-gradient-to-t from-white to-red-50/70 p-4 lg:p-6 border-t border-red-200 shadow-lg backdrop-blur-sm animate-slide-up">
+              <div className="bg-gradient-to-t from-white to-red-50/70 p-4 lg:p-6 bottom-0 top-0 mt-64 border-t border-red-200 shadow-lg backdrop-blur-sm animate-slide-up">
                 {getTypingUsersText() && (
                   <div className="mb-3 lg:mb-4 flex items-center gap-2 text-red-600 bg-red-50 px-4 py-2 rounded-xl animate-slide-in">
                     <div className="flex gap-1">
