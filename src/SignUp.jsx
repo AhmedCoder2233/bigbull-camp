@@ -2,7 +2,13 @@ import { useState, useContext, useRef, useEffect } from "react";
 import { AuthContext } from "./context/AuthContext";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircleIcon } from "@heroicons/react/24/solid";
+
+// Custom CheckCircle Icon Component (replaces heroicons)
+const CheckCircleIcon = ({ className }) => (
+  <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+    <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
+  </svg>
+);
 
 export default function SignUp() {
   const { signUp } = useContext(AuthContext);
@@ -30,12 +36,11 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [step, setStep] = useState(1); // For multi-step animation
+  const [step, setStep] = useState(1);
 
   useEffect(() => {
     setIsMounted(true);
     
-    // Create floating red particles background
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const container = document.querySelector('.signup-particles');
@@ -55,7 +60,7 @@ export default function SignUp() {
           size: Math.random() * 2 + 1,
           speedX: Math.random() * 0.3 - 0.15,
           speedY: Math.random() * 0.3 - 0.15,
-          color: `rgba(220, 38, 38, ${Math.random() * 0.2 + 0.1})` // Red particles
+          color: `rgba(220, 38, 38, ${Math.random() * 0.2 + 0.1})`
         });
       }
       
@@ -90,7 +95,6 @@ export default function SignUp() {
     }
   }, []);
 
-  // Calculate password strength
   useEffect(() => {
     const calculateStrength = () => {
       let strength = 0;
@@ -154,7 +158,6 @@ export default function SignUp() {
     setError("");
     setSuccess("");
     
-    // Validate all fields
     const isEmailValid = validateField("email", formData.email);
     const isPasswordValid = validateField("password", formData.password);
     const isConfirmValid = validateField("confirmPassword", formData.confirmPassword);
@@ -163,7 +166,6 @@ export default function SignUp() {
     if (!isEmailValid || !isPasswordValid || !isConfirmValid || !isNameValid) {
       setError("Please fix the errors above");
       
-      // Animate error on form
       if (formRef.current) {
         formRef.current.style.animation = 'shake 0.5s ease-in-out';
         setTimeout(() => {
@@ -178,22 +180,19 @@ export default function SignUp() {
     setLoading(true);
     
     try {
-      // Animate form submission
-      setStep(2); // Show loading step
+      setStep(2);
       
-      // Simulate API delay for animation
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const res = await signUp(formData.email, formData.password, formData.name);
       
-      setStep(3); // Show success step
+      setStep(3);
       
       if (res === "VERIFY_EMAIL") {
         setSuccess(
           "Account created successfully 🎉 Please check your email to verify your account before signing in."
         );
         
-        // Success animation
         if (formRef.current) {
           formRef.current.style.transform = 'scale(0.95)';
           setTimeout(() => {
@@ -204,10 +203,9 @@ export default function SignUp() {
         }
       }
     } catch (err) {
-      setStep(1); // Return to form step
+      setStep(1);
       setError(err.message || "Sign up failed");
       
-      // Shake animation on error
       if (formRef.current) {
         formRef.current.style.animation = 'shake 0.5s ease-in-out';
         setTimeout(() => {
@@ -221,7 +219,6 @@ export default function SignUp() {
     }
   };
 
-  // Animated eye component
   const AnimatedEye = ({ show, setShow, disabled }) => {
     const [isBlinking, setIsBlinking] = useState(false);
 
@@ -248,21 +245,18 @@ export default function SignUp() {
         transition={{ duration: 0.2 }}
       >
         <div className="relative w-6 h-6">
-          {/* Eye outline */}
           <div className="absolute inset-0 rounded-full border-2 border-gray-400"></div>
           
-          {/* Pupil */}
           <motion.div
             className="absolute top-1/2 left-1/2 w-2 h-2 bg-gray-600 rounded-full"
             style={{ x: '-50%', y: '-50%' }}
             animate={{
               scale: show ? 0.8 : 1,
-              backgroundColor: show ? '#dc2626' : '#4b5563' // Red pupil when visible
+              backgroundColor: show ? '#dc2626' : '#4b5563'
             }}
             transition={{ duration: 0.3 }}
           />
           
-          {/* Eyelid */}
           <motion.div
             className="absolute inset-x-0 top-0 h-3 bg-white rounded-t-full"
             animate={{
@@ -272,7 +266,6 @@ export default function SignUp() {
             transition={{ duration: 0.3 }}
           />
           
-          {/* Eyelashes */}
           {!show && (
             <>
               <div className="absolute top-0 left-1/4 w-0.5 h-2 bg-gray-400"></div>
@@ -285,7 +278,6 @@ export default function SignUp() {
     );
   };
 
-  // Password strength indicator with red theme
   const PasswordStrength = () => {
     const getColor = () => {
       if (passwordStrength < 50) return "bg-red-400";
@@ -324,10 +316,8 @@ export default function SignUp() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-red-50 overflow-hidden relative">
-      {/* Animated Red Particles Background */}
       <div className="signup-particles absolute inset-0 pointer-events-none"></div>
       
-      {/* Floating red elements */}
       <div className="absolute top-10 right-10 w-32 h-32 bg-gradient-to-r from-red-100 to-red-200 rounded-full opacity-20 animate-float"></div>
       <div className="absolute bottom-10 left-10 w-40 h-40 bg-gradient-to-r from-red-200 to-red-300 rounded-full opacity-20 animate-float-delayed"></div>
       
@@ -343,9 +333,7 @@ export default function SignUp() {
         }}
         className="w-full max-w-md relative z-10 px-4"
       >
-        {/* Card with glass morphism effect */}
         <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-white/50">
-          {/* Animated Logo - Red Theme */}
           <div className="flex justify-center mb-6">
             <motion.div
               className="relative"
@@ -409,7 +397,6 @@ export default function SignUp() {
           <p className="text-gray-600 text-center mb-8">Join us today and get started</p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Success Alert */}
             <AnimatePresence>
               {success && (
                 <motion.div
@@ -434,7 +421,6 @@ export default function SignUp() {
               )}
             </AnimatePresence>
 
-            {/* Error Alert */}
             <AnimatePresence>
               {error && (
                 <motion.div
@@ -455,7 +441,6 @@ export default function SignUp() {
               )}
             </AnimatePresence>
 
-            {/* Progress Steps - Red Theme */}
             <div className="flex items-center justify-center mb-6">
               <div className="flex items-center space-x-4">
                 {[1, 2, 3].map((s) => (
@@ -478,7 +463,6 @@ export default function SignUp() {
               </div>
             </div>
 
-            {/* Name Field */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -523,7 +507,6 @@ export default function SignUp() {
               </motion.div>
             </motion.div>
 
-            {/* Email Field */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -568,7 +551,6 @@ export default function SignUp() {
               </motion.div>
             </motion.div>
 
-            {/* Password Field */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -624,7 +606,6 @@ export default function SignUp() {
               <PasswordStrength />
             </motion.div>
 
-            {/* Confirm Password Field */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -674,7 +655,6 @@ export default function SignUp() {
               </motion.div>
             </motion.div>
 
-            {/* Terms and Conditions */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -700,7 +680,6 @@ export default function SignUp() {
               </label>
             </motion.div>
 
-            {/* Sign Up Button */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -719,7 +698,6 @@ export default function SignUp() {
                 onHoverStart={() => !loading && setIsHovered(true)}
                 onHoverEnd={() => !loading && setIsHovered(false)}
               >
-                {/* Button shine effect */}
                 {isHovered && !loading && (
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
@@ -729,7 +707,6 @@ export default function SignUp() {
                   />
                 )}
                 
-                {/* Pulsing background effect */}
                 {!loading && (
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-red-500 via-red-600 to-red-500"
@@ -745,7 +722,6 @@ export default function SignUp() {
                   />
                 )}
                 
-                {/* Button content */}
                 <span className="relative z-10 flex items-center">
                   {loading ? (
                     <>
@@ -779,7 +755,6 @@ export default function SignUp() {
               </motion.button>
             </motion.div>
 
-            {/* Sign In Link */}
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -802,7 +777,6 @@ export default function SignUp() {
           </form>
         </div>
 
-        {/* Floating red decorative elements */}
         <motion.div
           className="absolute -top-4 -left-4 w-8 h-8 bg-red-300 rounded-full blur-sm"
           animate={{ 
@@ -842,8 +816,7 @@ export default function SignUp() {
         />
       </motion.div>
 
-      {/* Add CSS animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%, 100% { 
             transform: translateY(0px) rotate(0deg); 
@@ -872,11 +845,6 @@ export default function SignUp() {
           20%, 40%, 60%, 80% { transform: translateX(5px); }
         }
         
-        @keyframes pulse-red {
-          0%, 100% { opacity: 0.5; }
-          50% { opacity: 0.8; }
-        }
-        
         .animate-float {
           animation: float 8s ease-in-out infinite;
         }
@@ -894,14 +862,8 @@ export default function SignUp() {
           z-index: 1;
         }
         
-        /* Custom focus styles */
         input:focus {
           box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-        }
-        
-        /* Smooth transitions */
-        * {
-          transition: all 0.2s ease-in-out;
         }
       `}</style>
     </div>
