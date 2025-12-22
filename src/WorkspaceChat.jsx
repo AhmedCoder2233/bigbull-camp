@@ -2483,85 +2483,90 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
       );
     }
 
-    if (messages.length > 0) {
-      return (
-        <div className="flex-1 overflow-y-auto p-4 lg:p-6 messages-container">
-          <div className="space-y-4 lg:space-y-6 stagger">
-            {messages.map((message, index) => {
-              const isCurrentUser = message.sender_id === currentUser?.id;
-              const showAvatar = index === 0 || messages[index - 1]?.sender_id !== message.sender_id;
-              const senderName = message.sender?.name || "Unknown User";
-              const isSenderOnline = isUserOnline(message.sender_id);
-              
-              return (
-                <div
-                  key={message.id || `temp_${index}`}
-                  className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} ${showAvatar ? 'mt-4 lg:mt-6' : 'mt-2 lg:mt-3'}`}
-                >
-                  <div className={`max-w-[85%] lg:max-w-2xl ${isCurrentUser ? 'ml-auto' : ''}`}>
-                    {!isCurrentUser && showAvatar && (
-                      <div className="flex items-center gap-2 mb-1 lg:mb-2">
-                        <div className="relative">
-                          <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center shadow-md">
-                            <span className="text-white font-bold text-sm lg:text-base">
-                              {senderName?.charAt(0).toUpperCase() || "U"}
-                            </span>
-                          </div>
-                          {isSenderOnline && (
-                            <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-white bg-green-500 animate-pulse-slow"></div>
-                          )}
-                        </div>
-                        <div>
-                          <span className="font-bold text-gray-900 text-sm lg:text-base">
-                            {senderName}
+  
+  if (messages.length > 0) {
+    return (
+      <div className="flex-1 overflow-y-auto p-4 lg:p-6 messages-container">
+        <div className="space-y-4 lg:space-y-6 stagger">
+          {messages.map((message, index) => {
+            const isCurrentUser = message.sender_id === currentUser?.id;
+            const showAvatar = index === 0 || messages[index - 1]?.sender_id !== message.sender_id;
+            const senderName = message.sender?.name || "Unknown User";
+            const isSenderOnline = isUserOnline(message.sender_id);
+            
+            return (
+              <div
+                key={message.id || `temp_${index}`}
+                className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} ${showAvatar ? 'mt-4 lg:mt-6' : 'mt-2 lg:mt-3'}`}
+              >
+                <div className={`max-w-[85%] lg:max-w-2xl ${isCurrentUser ? 'ml-auto' : ''}`}>
+                  {!isCurrentUser && showAvatar && (
+                    <div className="flex items-center gap-2 mb-1 lg:mb-2">
+                      <div className="relative">
+                        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center shadow-md">
+                          <span className="text-white font-bold text-sm lg:text-base">
+                            {senderName?.charAt(0).toUpperCase() || "U"}
                           </span>
-                          {isSenderOnline && (
-                            <span className="text-xs text-green-600 ml-2 animate-pulse-slow">• Online</span>
-                          )}
                         </div>
-                      </div>
-                    )}
-
-                    <div className={`relative group rounded-2xl lg:rounded-3xl px-4 lg:px-6 py-3 lg:py-4 ${
-                      isCurrentUser
-                        ? 'bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-br-none shadow-lg hover:shadow-xl transition-all duration-300'
-                        : 'bg-white border border-red-200 rounded-bl-none shadow-sm hover:shadow-md transition-all duration-300'
-                    } ${message.id && message.id.startsWith('temp_') ? 'opacity-70' : ''}`}>
-                      <p className="break-words text-sm lg:text-base">{message.content}</p>
-                      <div className={`flex items-center justify-end gap-2 mt-2 ${
-                        isCurrentUser ? 'text-red-200' : 'text-red-600/70'
-                      }`}>
-                        <span className="text-xs lg:text-sm">
-                          {new Date(message.created_at + 'Z').toLocaleString('en-PK', {
-                            day: '2-digit',
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true,
-                            timeZone: 'Asia/Karachi'
-                          })}
-                        </span>
-                        {isCurrentUser && message.read_by && message.read_by.length > 1 && (
-                          <FiCheckCircle className="w-4 h-4 lg:w-5 lg:h-5" title="Read" />
+                        {isSenderOnline && (
+                          <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-white bg-green-500 animate-pulse-slow"></div>
                         )}
                       </div>
-                      {isCurrentUser && !message.id.startsWith('temp_') && (
+                      <div>
+                        <span className="font-bold text-gray-900 text-sm lg:text-base">
+                          {senderName}
+                        </span>
+                        {isSenderOnline && (
+                          <span className="text-xs text-green-600 ml-2 animate-pulse-slow">• Online</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={`relative group rounded-2xl lg:rounded-3xl px-4 lg:px-6 py-3 lg:py-4 ${
+                    isCurrentUser
+                      ? 'bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-br-none shadow-lg hover:shadow-xl transition-all duration-300'
+                      : 'bg-white border border-red-200 rounded-bl-none shadow-sm hover:shadow-md transition-all duration-300'
+                  } ${message.id && message.id.startsWith('temp_') ? 'opacity-70' : ''}`}>
+                    <p className="break-words text-sm lg:text-base">{message.content}</p>
+                    <div className={`flex items-center justify-end gap-2 mt-2 ${
+                      isCurrentUser ? 'text-red-200' : 'text-red-600/70'
+                    }`}>
+                      <span className="text-xs lg:text-sm">
+                        {new Date(message.created_at + 'Z').toLocaleString('en-PK', {
+                          day: '2-digit',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true,
+                          timeZone: 'Asia/Karachi'
+                        })}
+                      </span>
+                      {isCurrentUser && message.read_by && message.read_by.length > 1 && (
+                        <FiCheckCircle className="w-4 h-4 lg:w-5 lg:h-5" title="Read" />
+                      )}
+                    </div>
+                    
+                    {/* ✅ FIXED: Mobile ke liye always visible delete button */}
+                    {isCurrentUser && !message.id.startsWith('temp_') && (
+                      <div className="absolute -top-2 -right-2 w-8 h-8 flex items-center justify-center">
                         <button
                           onClick={() => showDeleteMessageConfirmation(message)}
-                          className="absolute -top-2 -right-2 w-8 h-8 bg-white border border-red-200 rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-300 opacity-0 group-hover:opacity-100 shadow-sm"
+                          className="w-8 h-8 bg-white border border-red-200 rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-300 shadow-sm"
                           title="Delete message"
                         >
                           <FiTrash2 className="w-3.5 h-3.5" />
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-          <div ref={messagesEndRef} />
+              </div>
+            );
+          })}
         </div>
+        <div ref={messagesEndRef} />
+      </div>
       );
     }
 
@@ -3686,7 +3691,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
               {renderMessageArea()}
 
               {/* Message Input */}
-              <div className="bg-gradient-to-t from-white to-red-50/70 p-4 lg:p-6 bottom-0 top-0 mt-64 border-t border-red-200 shadow-lg backdrop-blur-sm animate-slide-up">
+              <div className="bg-gradient-to-t from-white to-red-50/70 p-4 lg:p-6 mt-12 border-t border-red-200 shadow-lg backdrop-blur-sm animate-slide-up">
                 {getTypingUsersText() && (
                   <div className="mb-3 lg:mb-4 flex items-center gap-2 text-red-600 bg-red-50 px-4 py-2 rounded-xl animate-slide-in">
                     <div className="flex gap-1">
@@ -3837,7 +3842,7 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
 
               {isLoadingMessages ? (
                 <div className="flex-1 overflow-y-auto p-4">
-                  <div className="flex items-center justify-center h-full">
+                  <div className="flex items-center justify-center">
                     <div className="text-center">
                       <SimpleLoader size="medium" className="mb-4" />
                       <p className="text-red-600/70 text-sm">
@@ -3898,6 +3903,15 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
                                   )}
                                 </div>
                               </div>
+                              {isCurrentUser && !message.id.startsWith('temp_') && (
+  <button
+    onClick={() => showDeleteMessageConfirmation(message)}
+    className="absolute -top-2 -right-2 w-7 h-7 bg-white border border-red-200 rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-300 shadow-sm"
+    title="Delete message"
+  >
+    <FiTrash2 className="w-3 h-3" />
+  </button>
+)}
                             </div>
                           </div>
                         );
