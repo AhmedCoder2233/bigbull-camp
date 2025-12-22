@@ -1,8 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useContext } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { FiChevronRight } from "react-icons/fi";
-import { HiOutlineSparkles, HiOutlineLightningBolt } from "react-icons/hi";
 
 import Header from "./components/Header";
 import Sidebar from "./components/LandingPage";
@@ -26,9 +24,99 @@ function PrivateRoute({ children }) {
   return user ? children : <Navigate to="/signin" />;
 }
 
+// Floating Particle Component
+const FloatingParticle = ({ index, isMobile }) => {
+  const size = Math.random() * (isMobile ? 3 : 4) + 1;
+  const delay = Math.random() * 2;
+  const duration = 3 + Math.random() * 2;
+  
+  return (
+    <motion.div
+      initial={{ 
+        x: `${Math.random() * 100}%`,
+        y: `${Math.random() * 100}%`,
+        opacity: 0,
+        scale: 0
+      }}
+      animate={{ 
+        y: [`${Math.random() * 100}%`, `${Math.random() * 100}%`],
+        x: [`${Math.random() * 100}%`, `${Math.random() * 100}%`],
+        opacity: [0, 0.6, 0],
+        scale: [0, 1, 0]
+      }}
+      transition={{
+        duration,
+        delay,
+        repeat: Infinity,
+        ease: "easeInOut"
+      }}
+      className="absolute rounded-full"
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        background: 'radial-gradient(circle, #ef4444, #dc2626)',
+        boxShadow: '0 0 10px rgba(239, 68, 68, 0.5)'
+      }}
+    />
+  );
+};
+
+// Orbiting Ring Component
+const OrbitRing = ({ radius, duration, delay, isMobile }) => {
+  return (
+    <motion.div
+      initial={{ scale: 0, opacity: 0, rotate: 0 }}
+      animate={{ 
+        scale: 1, 
+        opacity: [0, 0.4, 0.4, 0],
+        rotate: 360
+      }}
+      transition={{
+        scale: { duration: 0.8, delay },
+        opacity: { duration: 2, delay, times: [0, 0.2, 0.8, 1] },
+        rotate: { duration, delay: delay + 0.5, repeat: Infinity, ease: "linear" }
+      }}
+      className="absolute"
+      style={{
+        width: `${radius}px`,
+        height: `${radius}px`,
+        borderRadius: '50%',
+        border: `${isMobile ? 1 : 2}px solid`,
+        borderColor: 'rgba(239, 68, 68, 0.3)',
+        borderStyle: 'dashed'
+      }}
+    />
+  );
+};
+
+// Energy Wave Component
+const EnergyWave = ({ delay, isMobile }) => {
+  return (
+    <motion.div
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ 
+        scale: [0, 3, 4],
+        opacity: [0.6, 0.3, 0]
+      }}
+      transition={{
+        duration: 3,
+        delay,
+        repeat: Infinity,
+        ease: "easeOut"
+      }}
+      className="absolute inset-0 rounded-full"
+      style={{
+        border: `${isMobile ? 2 : 3}px solid rgba(239, 68, 68, 0.5)`,
+        filter: 'blur(2px)'
+      }}
+    />
+  );
+};
+
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [currentPhase, setCurrentPhase] = useState('initializing');
   const [windowSize, setWindowSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight
@@ -41,7 +129,6 @@ export default function App() {
         height: window.innerHeight
       });
     };
-
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -49,25 +136,30 @@ export default function App() {
   useEffect(() => {
     const progressTimer = setInterval(() => {
       setLoadingProgress(prev => {
-        if (prev >= 100) {
+        const next = prev + 1;
+        if (next >= 100) {
           clearInterval(progressTimer);
           return 100;
         }
-        return prev + 1;
+        
+        // Update phases
+        if (next > 30 && currentPhase === 'initializing') setCurrentPhase('loading');
+        if (next > 70 && currentPhase === 'loading') setCurrentPhase('finalizing');
+        
+        return next;
       });
-    }, 25);
+    }, 30);
 
     const animationTimer = setTimeout(() => {
       setShowIntro(false);
-    }, 3500);
+    }, 4000);
     
     return () => {
       clearTimeout(animationTimer);
       clearInterval(progressTimer);
     };
-  }, []);
+  }, [currentPhase]);
 
-  // Responsive values based on screen size
   const isMobile = windowSize.width < 768;
   const isTablet = windowSize.width >= 768 && windowSize.width < 1024;
 
@@ -76,9 +168,9 @@ export default function App() {
       <WorkspaceProvider>
         <ActiveWorkspaceProvider>
           <BrowserRouter>
-          <ToastContainer />
-            
-            {/* VIP Opening Animation - Now Responsive */}
+            <ToastContainer />
+
+            {/* Advanced Opening Animation */}
             <AnimatePresence>
               {showIntro && (
                 <motion.div
@@ -86,618 +178,244 @@ export default function App() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.5 }}
-                  className="fixed inset-0 z-[9999] bg-gradient-to-br from-gray-950 via-black to-red-950 overflow-hidden"
-                  style={{
-                    width: '100vw',
-                    height: '100vh',
-                    overflow: 'hidden'
-                  }}
+                  className="fixed inset-0 z-[9999] bg-gradient-to-br from-gray-900 via-black to-gray-900 overflow-hidden"
                 >
-                  {/* Animated Background Elements */}
+                  {/* Radial Gradient Background */}
                   <div className="absolute inset-0">
-                    {/* Matrix-like binary rain effect - Responsive count */}
-                    <div className="absolute inset-0 opacity-20">
-                      {[...Array(isMobile ? 15 : isTablet ? 20 : 30)].map((_, i) => (
-                        <motion.div
-                          key={i}
-                          initial={{ 
-                            y: -100,
-                            x: `${Math.random() * 100}%`,
-                            opacity: 0
-                          }}
-                          animate={{ 
-                            y: "120vh",
-                            opacity: [0, 0.8, 0]
-                          }}
-                          transition={{
-                            duration: Math.random() * 2 + 1,
-                            delay: Math.random() * 0.5,
-                            repeat: Infinity,
-                            ease: "linear"
-                          }}
-                          className="absolute text-xs font-mono text-red-400"
-                          style={{
-                            fontSize: `${Math.random() * (isMobile ? 6 : 8) + (isMobile ? 6 : 8)}px`,
-                          }}
-                        >
-                          {Math.random() > 0.5 ? "1" : "0"}
-                        </motion.div>
-                      ))}
-                    </div>
-
-                    {/* Animated Circuit Board Lines - Responsive SVG */}
-                    <svg className="absolute inset-0 w-full h-full opacity-10">
-                      <motion.path
-                        initial={{ pathLength: 0 }}
-                        animate={{ pathLength: 1 }}
-                        transition={{ duration: 3, ease: "easeInOut" }}
-                        d={isMobile ? 
-                          "M0,50 Q100,25 200,50 T400,50" : 
-                          isTablet ? 
-                          "M0,75 Q150,38 300,75 T600,75" : 
-                          "M0,100 Q200,50 400,100 T800,100"
-                        }
-                        stroke="url(#gradient1)"
-                        strokeWidth={isMobile ? "1" : "2"}
-                        fill="none"
-                      />
-                      <motion.path
-                        initial={{ pathLength: 0 }}
-                        animate={{ pathLength: 1 }}
-                        transition={{ duration: 3, delay: 0.3, ease: "easeInOut" }}
-                        d={isMobile ?
-                          "M50,150 Q150,125 250,150 T450,150" :
-                          isTablet ?
-                          "M100,200 Q250,175 400,200 T700,200" :
-                          "M100,300 Q300,250 500,300 T900,300"
-                        }
-                        stroke="url(#gradient2)"
-                        strokeWidth={isMobile ? "1" : "2"}
-                        fill="none"
-                      />
-                      <defs>
-                        <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#dc2626" />
-                          <stop offset="50%" stopColor="#ef4444" />
-                          <stop offset="100%" stopColor="#dc2626" />
-                        </linearGradient>
-                        <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#991b1b" />
-                          <stop offset="50%" stopColor="#dc2626" />
-                          <stop offset="100%" stopColor="#991b1b" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-
-                    {/* Glowing orbs - Responsive sizing */}
                     <motion.div
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ 
-                        scale: [1, 1.2, 1],
-                        opacity: [0.3, 0.5, 0.3]
+                      animate={{
+                        background: [
+                          'radial-gradient(circle at 20% 30%, rgba(220, 38, 38, 0.15) 0%, transparent 50%)',
+                          'radial-gradient(circle at 80% 70%, rgba(220, 38, 38, 0.15) 0%, transparent 50%)',
+                          'radial-gradient(circle at 20% 30%, rgba(220, 38, 38, 0.15) 0%, transparent 50%)'
+                        ]
                       }}
-                      transition={{ 
-                        duration: 4,
-                        repeat: Infinity,
-                        repeatType: "reverse"
-                      }}
-                      className={`absolute top-1/4 left-1/4 ${
-                        isMobile ? 'w-40 h-40' : 
-                        isTablet ? 'w-60 h-60' : 
-                        'w-80 h-80'
-                      } bg-gradient-to-r from-red-600 to-red-800 rounded-full blur-3xl`}
-                    />
-                    <motion.div
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ 
-                        scale: [1, 1.3, 1],
-                        opacity: [0.2, 0.4, 0.2],
-                        rotate: 360
-                      }}
-                      transition={{ 
-                        duration: 5,
-                        repeat: Infinity,
-                        ease: "linear"
-                      }}
-                      className={`absolute bottom-1/4 right-1/4 ${
-                        isMobile ? 'w-48 h-48' : 
-                        isTablet ? 'w-64 h-64' : 
-                        'w-96 h-96'
-                      } bg-gradient-to-r from-red-700 to-red-900 rounded-full blur-3xl`}
+                      transition={{ duration: 8, repeat: Infinity }}
+                      className="absolute inset-0"
                     />
                   </div>
 
-                  {/* Main Content Container - Fully Responsive */}
-                  <div 
-                    className="relative h-full w-full flex flex-col items-center justify-center px-4 md:px-6 overflow-auto"
-                    style={{
-                      maxHeight: '100vh',
-                      maxWidth: '100vw'
-                    }}
-                  >
-                    {/* Logo Container - Responsive sizing */}
-                    <motion.div
-                      initial={{ scale: 0, rotate: -180 }}
-                      animate={{ 
-                        scale: 1, 
-                        rotate: 0,
-                        y: [0, -10, 0]
-                      }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 200,
-                        damping: 15,
-                        delay: 0.3,
-                        y: {
-                          duration: 3,
+                  {/* Floating Particles */}
+                  <div className="absolute inset-0">
+                    {[...Array(isMobile ? 30 : 50)].map((_, i) => (
+                      <FloatingParticle key={i} index={i} isMobile={isMobile} />
+                    ))}
+                  </div>
+
+                  {/* Main Content */}
+                  <div className="relative h-full w-full flex flex-col items-center justify-center p-4">
+                    
+                    {/* Logo with Minimal Effects */}
+                    <div className={`relative ${isMobile ? 'w-56 h-56 mb-12' : 'w-72 h-72 mb-16'} flex items-center justify-center`}>
+                      
+                      {/* Subtle Orbiting Ring */}
+                      <OrbitRing radius={isMobile ? 140 : 180} duration={12} delay={0.3} isMobile={isMobile} />
+
+                      {/* Subtle Central Glow */}
+                      <motion.div
+                        animate={{
+                          scale: [1, 1.1, 1],
+                          opacity: [0.2, 0.3, 0.2]
+                        }}
+                        transition={{
+                          duration: 4,
                           repeat: Infinity,
                           ease: "easeInOut"
-                        }
-                      }}
-                      className={`mb-6 md:mb-10 relative ${
-                        isMobile ? 'w-32 h-32' : 
-                        isTablet ? 'w-36 h-36' : 
-                        'w-40 h-40'
-                      }`}
-                    >
-                      {/* Outer Pulse Ring */}
+                        }}
+                        className="absolute inset-0 rounded-full"
+                        style={{
+                          background: 'radial-gradient(circle, rgba(239, 68, 68, 0.2), transparent 70%)',
+                          filter: 'blur(30px)'
+                        }}
+                      />
+
+                      {/* Logo Container - Bigger and Stable */}
                       <motion.div
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ 
-                          scale: [1, 1.5, 1],
-                          opacity: [0.5, 0, 0.5]
+                          scale: 1, 
+                          opacity: 1
                         }}
                         transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "linear"
+                          scale: { duration: 0.8, type: "spring", stiffness: 150 },
+                          opacity: { duration: 0.6 }
                         }}
-                        className={`absolute ${
-                          isMobile ? '-inset-4' : 
-                          isTablet ? '-inset-5' : 
-                          '-inset-6'
-                        } border-2 border-red-500/30 rounded-3xl`}
-                      />
-                      
-                      {/* Secondary Pulse Ring */}
-                      <motion.div
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ 
-                          scale: [1, 1.8, 1],
-                          opacity: [0.3, 0, 0.3]
+                        className={`relative ${isMobile ? 'w-48 h-48' : 'w-56 h-56'} bg-gradient-to-br  rounded-3xl shadow-2xl flex items-center justify-center`}
+                        style={{
+                          boxShadow: '0 0 40px rgba(239, 68, 68, 0.4)'
                         }}
-                        transition={{
-                          duration: 2.5,
-                          repeat: Infinity,
-                          ease: "linear",
-                          delay: 0.5
-                        }}
-                        className={`absolute ${
-                          isMobile ? '-inset-6' : 
-                          isTablet ? '-inset-8' : 
-                          '-inset-10'
-                        } border border-red-400/20 rounded-3xl`}
-                      />
-                      
-                      {/* Main Logo Circle */}
-                      <div className={`relative w-full h-full rounded-3xl bg-gradient-to-br from-gray-900 via-gray-950 to-black border-2 border-red-500/40 shadow-2xl shadow-red-500/20 flex items-center justify-center`}>
-                        {/* Animated border rings */}
-                        <motion.div
-                          animate={{
-                            rotate: 360
-                          }}
-                          transition={{
-                            duration: 20,
-                            repeat: Infinity,
-                            ease: "linear"
-                          }}
-                          className={`absolute ${
-                            isMobile ? 'inset-2' : 
-                            isTablet ? 'inset-3' : 
-                            'inset-4'
-                          } border border-red-500/20 rounded-2xl`}
-                        />
+                      >
+                        {/* Subtle Inner Glow */}
+                        <div className="absolute inset-3 rounded-2xl bg-gradient-to-br from-red-400/10 to-transparent" />
                         
-                        {/* Logo Image with Glow */}
-                        <motion.div
-                          animate={{
-                            scale: [1, 1.05, 1],
-                            filter: ["brightness(1)", "brightness(1.3)", "brightness(1)"]
-                          }}
-                          transition={{
-                            duration: 2,
-                            repeat: Infinity,
-                            ease: "easeInOut"
-                          }}
-                          className="relative z-10"
-                        >
-                          <img 
-                            src="/logo.png" 
-                            alt="BigBull CAMP Logo" 
-                            className={`${
-                              isMobile ? 'w-16 h-16' : 
-                              isTablet ? 'w-20 h-20' : 
-                              'w-24 h-24'
-                            } object-contain drop-shadow-lg`}
-                          />
-                        </motion.div>
-                        
-                        {/* Corner Accents */}
-                        <div className="absolute -top-1 -left-1 w-3 h-3">
-                          <motion.div
-                            animate={{ 
-                              rotate: 360,
-                              scale: [1, 1.2, 1]
-                            }}
-                            transition={{
-                              rotate: {
-                                duration: 4,
-                                repeat: Infinity,
-                                ease: "linear"
-                              },
-                              scale: {
-                                duration: 1,
-                                repeat: Infinity,
-                                ease: "easeInOut"
-                              }
-                            }}
-                            className="w-full h-full border-t border-l border-red-500 rounded-tl-lg"
-                          />
-                        </div>
-                        <div className="absolute -top-1 -right-1 w-3 h-3">
-                          <motion.div
-                            animate={{ 
-                              rotate: -360,
-                              scale: [1, 1.2, 1]
-                            }}
-                            transition={{
-                              rotate: {
-                                duration: 4,
-                                repeat: Infinity,
-                                ease: "linear"
-                              },
-                              scale: {
-                                duration: 1,
-                                repeat: Infinity,
-                                ease: "easeInOut"
-                              }
-                            }}
-                            className="w-full h-full border-t border-r border-red-500 rounded-tr-lg"
-                          />
-                        </div>
-                      </div>
-                    </motion.div>
-
-                    {/* Title Animation - Responsive typography */}
-                    <div className="text-center mb-8 md:mb-12 w-full px-2 overflow-hidden relative">
-                      {/* Glitch Effect Layers */}
-                      {!isMobile && (
-                        <>
-                          <motion.div
-                            animate={{
-                              x: [0, -2, 2, -1, 1, 0],
-                              opacity: [1, 0.8, 0.9, 0.8, 0.9, 1]
-                            }}
-                            transition={{
-                              duration: 0.5,
-                              times: [0, 0.1, 0.2, 0.3, 0.4, 0.5],
-                              repeat: 3,
-                              repeatDelay: 2
-                            }}
-                            className="absolute inset-0"
-                          >
-                            <h1 className={`${
-                              isMobile ? 'text-3xl' : 
-                              isTablet ? 'text-5xl' : 
-                              'text-6xl md:text-8xl'
-                            } font-black mb-2 md:mb-4 text-red-500/30 blur-[2px]`}>
-                              BIG BULL CAMP
-                            </h1>
-                          </motion.div>
-                          
-                          <motion.div
-                            animate={{
-                              x: [0, 2, -2, 1, -1, 0],
-                              opacity: [1, 0.7, 0.8, 0.7, 0.8, 1]
-                            }}
-                            transition={{
-                              duration: 0.5,
-                              times: [0, 0.1, 0.2, 0.3, 0.4, 0.5],
-                              repeat: 3,
-                              repeatDelay: 2
-                            }}
-                            className="absolute inset-0"
-                          >
-                            <h1 className={`${
-                              isMobile ? 'text-3xl' : 
-                              isTablet ? 'text-5xl' : 
-                              'text-6xl md:text-8xl'
-                            } font-black mb-2 md:mb-4 text-cyan-500/20 blur-[1px]`}>
-                              BIG BULL CAMP
-                            </h1>
-                          </motion.div>
-                        </>
-                      )}
-                      
-                      {/* Main Title */}
-                      <motion.h1
-                        initial={{ y: 50, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{
-                          duration: 1.2,
-                          delay: 0.5,
-                          type: "spring",
-                          stiffness: 100,
-                          damping: 15
-                        }}
-                        className={`${
-                          isMobile ? 'text-3xl sm:text-4xl' : 
-                          isTablet ? 'text-5xl' : 
-                          'text-6xl md:text-7xl lg:text-8xl'
-                        } font-black mb-4 md:mb-6 relative z-10 leading-tight md:leading-normal`}
-                      >
-                        <span className="bg-gradient-to-r from-red-500 via-red-600 to-red-400 bg-clip-text text-transparent">
-                          BIG BULL CAMP
-                        </span>
-                      </motion.h1>
-                      
-                      {/* Animated Underline */}
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: isMobile ? "200px" : isTablet ? "300px" : "400px" }}
-                        transition={{ duration: 1.5, delay: 1, ease: "easeOut" }}
-                        className={`h-1 md:h-1.5 bg-gradient-to-r from-red-500 via-red-600 to-red-500 mx-auto rounded-full mb-4 md:mb-6 overflow-hidden`}
-                      >
-                        <motion.div
-                          animate={{
-                            x: ["-100%", "100%"]
-                          }}
-                          transition={{
-                            duration: 1.5,
-                            repeat: Infinity,
-                            ease: "linear"
-                          }}
-                          className="h-full w-20 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+                        {/* Logo Image - Bigger */}
+                        <motion.img
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ duration: 0.6, delay: 0.5 }}
+                          src="/logo.png"
+                          alt="BigBull CAMP"
+                          className={`${isMobile ? 'w-32 h-32' : 'w-40 h-40'} object-contain z-10`}
                         />
-                      </motion.div>
-                      
-                      {/* Subtitle */}
-                      <motion.div
-                        initial={{ y: 30, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ duration: 0.8, delay: 1.5 }}
-                        className="space-y-1 md:space-y-2"
-                      >
-                        <p className={`${
-                          isMobile ? 'text-sm sm:text-base' : 
-                          isTablet ? 'text-lg' : 
-                          'text-xl md:text-2xl lg:text-3xl'
-                        } text-gray-300 font-light tracking-wider`}>
-                          ENTERPRISE PROJECT MANAGEMENT
-                        </p>
-                        <motion.p
-                          animate={{ opacity: [0.7, 1, 0.7] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                          className={`${
-                            isMobile ? 'text-xs sm:text-sm' : 
-                            'text-base md:text-lg'
-                          } text-red-300/80 font-medium`}
-                        >
-                          Task Management • Real-time Chat • Workspaces • Analytics
-                        </motion.p>
                       </motion.div>
                     </div>
 
-                    {/* Advanced Loading System - Responsive */}
-                    <div className={`${
-                      isMobile ? 'w-full max-w-xs' : 
-                      isTablet ? 'w-80' : 
-                      'w-96'
-                    } max-w-full mb-8 md:mb-12 px-4`}>
-                      <div className="flex justify-between items-center mb-2">
-                        <motion.span
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.5 }}
-                          className={`${
-                            isMobile ? 'text-xs' : 'text-sm'
-                          } text-gray-400 font-medium`}
-                        >
-                          SYSTEM INITIALIZATION
-                        </motion.span>
-                        <motion.span
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.7 }}
-                          className={`${
-                            isMobile ? 'text-xs' : 'text-sm'
-                          } font-bold text-red-400`}
-                        >
-                          {loadingProgress}%
-                        </motion.span>
-                      </div>
-                      
-                      {/* Main Loading Bar */}
-                      <div className="relative h-2 md:h-3 bg-gray-900/50 rounded-full overflow-hidden border border-gray-800">
-                        <motion.div
-                          initial={{ width: "0%" }}
-                          animate={{ width: `${loadingProgress}%` }}
-                          transition={{ duration: 2.5, ease: "easeInOut" }}
-                          className="h-full bg-gradient-to-r from-red-600 via-red-500 to-red-600 relative"
-                        >
-                          {/* Loading bar shine effect */}
-                          <motion.div
-                            animate={{
-                              x: ["-100%", "100%"]
-                            }}
-                            transition={{
-                              duration: 1.2,
-                              repeat: Infinity,
-                              ease: "linear"
-                            }}
-                            className="absolute inset-y-0 w-16 md:w-20 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                          />
-                        </motion.div>
-                        
-                        {/* Loading indicators */}
-                        <div className="absolute inset-0 flex justify-between items-center px-1 md:px-2">
-                          {[0, 25, 50, 75, 100].map((point) => (
-                            <motion.div
-                              key={point}
-                              initial={{ opacity: 0, scale: 0 }}
-                              animate={{ 
-                                opacity: loadingProgress >= point ? 1 : 0.3,
-                                scale: loadingProgress >= point ? 1 : 0.8
-                              }}
-                              transition={{ duration: 0.3 }}
-                              className={`${
-                                isMobile ? 'w-1.5 h-1.5' : 'w-2 h-2'
-                              } rounded-full ${loadingProgress >= point ? 'bg-red-400' : 'bg-gray-700'}`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      
-                      {/* Loading modules - Responsive grid */}
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.8 }}
-                        className={`grid ${
-                          isMobile ? 'grid-cols-1 gap-1' : 'grid-cols-2 gap-2'
-                        } mt-3 md:mt-4 ${isMobile ? 'text-xs' : 'text-xs md:text-sm'}`}
-                      >
-                        {[
-                          { name: "Workspace Manager", loaded: loadingProgress > 20 },
-                          { name: "Real-time Chat", loaded: loadingProgress > 40 },
-                          { name: "Task Engine", loaded: loadingProgress > 60 },
-                          { name: "Analytics Dashboard", loaded: loadingProgress > 80 }
-                        ].map((module, index) => (
-                          <div key={index} className="flex items-center gap-2 truncate">
-                            <motion.div
-                              animate={{ 
-                                scale: module.loaded ? [1, 1.2, 1] : 1,
-                                backgroundColor: module.loaded ? "#ef4444" : "#374151"
-                              }}
-                              transition={{ duration: 0.3 }}
-                              className={`${
-                                isMobile ? 'w-1.5 h-1.5' : 'w-2 h-2'
-                              } rounded-full flex-shrink-0`}
-                            />
-                            <span className={`${module.loaded ? 'text-red-300' : 'text-gray-500'} truncate`}>
-                              {module.name}
-                            </span>
-                            {module.loaded && (
-                              <motion.span
-                                initial={{ opacity: 0, scale: 0 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="text-green-400 text-xs flex-shrink-0"
-                              >
-                                ✓
-                              </motion.span>
-                            )}
-                          </div>
-                        ))}
-                      </motion.div>
-                    </div>
-
-                    {/* Features Grid - Responsive layout */}
+                    {/* Title with Smooth Reveal */}
                     <motion.div
                       initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.8, delay: 2 }}
-                      className={`grid ${
-                        isMobile ? 'grid-cols-1 gap-4' : 
-                        isTablet ? 'grid-cols-2 gap-5' : 
-                        'grid-cols-3 gap-6'
-                      } w-full max-w-6xl px-4 md:px-6`}
+                      transition={{ duration: 0.8, delay: 1 }}
+                      className="text-center mb-8"
                     >
-                      {[
-                        { 
-                          icon: "⚡", 
-                          title: "Lightning Fast",
-                          desc: "Real-time collaboration",
-                          color: "from-yellow-500 to-red-500"
-                        },
-                        { 
-                          icon: "🔐", 
-                          title: "Enterprise Security",
-                          desc: "Bank-level encryption",
-                          color: "from-red-500 to-red-700"
-                        },
-                        { 
-                          icon: "🚀", 
-                          title: "Production Ready",
-                          desc: "Scalable architecture",
-                          color: "from-red-600 to-orange-500"
-                        }
-                      ].map((item, index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          transition={{ duration: 0.5, delay: 2.2 + index * 0.2 }}
-                          whileHover={{ 
-                            scale: isMobile ? 1.02 : 1.05,
-                            y: isMobile ? -2 : -5,
-                            boxShadow: "0 20px 40px rgba(220, 38, 38, 0.3)"
-                          }}
-                          className={`bg-gradient-to-br ${item.color} p-0.5 rounded-xl md:rounded-2xl w-full`}
-                        >
-                          <div className="bg-gray-900/90 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 h-full">
-                            <motion.div
-                              animate={{ rotate: [0, 10, -10, 0] }}
-                              transition={{ duration: 2, repeat: Infinity, delay: index * 0.5 }}
-                              className={`${
-                                isMobile ? 'text-2xl' : 'text-3xl'
-                              } mb-3 md:mb-4`}
-                            >
-                              {item.icon}
-                            </motion.div>
-                            <h3 className={`${
-                              isMobile ? 'text-lg' : 'text-xl'
-                            } font-bold text-white mb-1 md:mb-2 truncate`}>{item.title}</h3>
-                            <p className={`${
-                              isMobile ? 'text-xs' : 'text-sm'
-                            } text-gray-300 line-clamp-2`}>{item.desc}</p>
-                          </div>
-                        </motion.div>
-                      ))}
+                      <motion.h1
+                        className={`${isMobile ? 'text-4xl' : 'text-6xl'} font-black mb-2`}
+                      >
+                        {['BIG', 'BULL', 'CAMP'].map((word, i) => (
+                          <motion.span
+                            key={i}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5, delay: 1 + i * 0.2 }}
+                            className="inline-block bg-gradient-to-r from-red-400 via-red-500 to-red-600 bg-clip-text text-transparent mr-3"
+                            style={{ 
+                              textShadow: '0 0 30px rgba(239, 68, 68, 0.3)'
+                            }}
+                          >
+                            {word}
+                          </motion.span>
+                        ))}
+                      </motion.h1>
+
+                      <motion.p
+                        initial={{ opacity: 0, letterSpacing: '0.5em' }}
+                        animate={{ 
+                          opacity: [0, 1],
+                          letterSpacing: ['0.5em', '0.2em']
+                        }}
+                        transition={{ duration: 1, delay: 1.6 }}
+                        className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-400 font-light tracking-widest`}
+                      >
+                        ENTERPRISE PROJECT MANAGEMENT
+                      </motion.p>
                     </motion.div>
 
-                    {/* Copyright - Responsive positioning */}
+                    {/* Sleek Progress System */}
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 1 }}
+                      className={`${isMobile ? 'w-80' : 'w-96'} space-y-4`}
+                    >
+                      {/* Progress Bar */}
+                      <div className="relative">
+                        <div className="flex justify-between items-center mb-2">
+                          <motion.span 
+                            key={currentPhase}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className={`${isMobile ? 'text-xs' : 'text-sm'} text-red-400 font-semibold uppercase`}
+                          >
+                            {currentPhase === 'initializing' && 'Initializing System'}
+                            {currentPhase === 'loading' && 'Loading Modules'}
+                            {currentPhase === 'finalizing' && 'Finalizing Setup'}
+                          </motion.span>
+                          <span className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-red-500`}>
+                            {loadingProgress}%
+                          </span>
+                        </div>
+
+                        <div className="relative h-2 bg-gray-800/50 rounded-full overflow-hidden backdrop-blur-sm">
+                          <motion.div
+                            initial={{ width: "0%" }}
+                            animate={{ width: `${loadingProgress}%` }}
+                            className="h-full bg-gradient-to-r from-red-600 via-red-500 to-red-400 relative"
+                          >
+                            <motion.div
+                              animate={{ x: ['-100%', '200%'] }}
+                              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                              className="absolute inset-0 w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                            />
+                          </motion.div>
+                        </div>
+                      </div>
+
+                      {/* Status Indicators */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { name: 'Workspace', progress: loadingProgress > 25 },
+                          { name: 'Real-time', progress: loadingProgress > 50 },
+                          { name: 'Analytics', progress: loadingProgress > 75 },
+                          { name: 'Security', progress: loadingProgress > 90 }
+                        ].map((item, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 2 + i * 0.1 }}
+                            className={`px-3 py-2 rounded-lg backdrop-blur-sm transition-all ${
+                              item.progress 
+                                ? 'bg-red-500/10 border border-red-500/30' 
+                                : 'bg-gray-800/30 border border-gray-700/30'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className={`${isMobile ? 'text-xs' : 'text-sm'} ${
+                                item.progress ? 'text-red-400' : 'text-gray-500'
+                              }`}>
+                                {item.name}
+                              </span>
+                              <motion.div
+                                animate={item.progress ? {
+                                  scale: [1, 1.3, 1],
+                                  opacity: [0.5, 1, 0.5]
+                                } : {}}
+                                transition={{ duration: 1.5, repeat: Infinity }}
+                                className={`w-2 h-2 rounded-full ${
+                                  item.progress ? 'bg-red-500' : 'bg-gray-600'
+                                }`}
+                              />
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+
+                    {/* Footer */}
                     <motion.div
                       initial={{ opacity: 0 }}
-                      animate={{ opacity: 0.6 }}
-                      transition={{ duration: 1, delay: 2.5 }}
-                      className="absolute bottom-4 md:bottom-8 text-center w-full px-4"
+                      animate={{ opacity: 0.5 }}
+                      transition={{ delay: 2.5 }}
+                      className="absolute bottom-8 text-center"
                     >
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: "100%" }}
-                        transition={{ duration: 1.5, delay: 3 }}
-                        className="h-px bg-gradient-to-r from-transparent via-red-500 to-transparent mb-2"
-                      />
-                      <p className={`${
-                        isMobile ? 'text-xs' : 'text-sm'
-                      } text-gray-500 font-mono truncate`}>
-                        © {new Date().getFullYear()} BIG BULL CAMP v2.0 • ENTERPRISE EDITION
+                      <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 font-light`}>
+                        © {new Date().getFullYear()} Big Bull Camp • Enterprise Edition
                       </p>
                     </motion.div>
                   </div>
+
+                  {/* Scan Line Effect */}
+                  <motion.div
+                    animate={{ y: ['0%', '100%'] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background: 'linear-gradient(to bottom, transparent, rgba(239, 68, 68, 0.03), transparent)',
+                      height: '100px'
+                    }}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Main App Content */}
+            {/* Main App Content - Your Original Components */}
             <AnimatePresence>
               {!showIntro && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="w-full overflow-x-hidden"
+                  transition={{ duration: 0.3 }}
+                  className="w-full"
                 >
                   <Header />
                   
