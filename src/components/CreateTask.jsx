@@ -102,7 +102,7 @@ Due Date: ${dueDate ? new Date(dueDate).toLocaleDateString() : "Not set"}
       templateParams
     );
 
-    console.log('✅ Email sent successfully:', result);
+    console.log('✅ Email sent successfully');
     return { success: true };
 
   } catch (error) {
@@ -508,3 +508,4 @@ Due Date: ${dueDate ? new Date(dueDate).toLocaleDateString() : "Not set"}
     </div>
   );
 }
+
