@@ -186,13 +186,9 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white to-red-50 p-4 overflow-hidden relative">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white to-red-50 p-4 relative">
       {/* Animated Background Particles */}
       <div className="particles-container absolute inset-0 pointer-events-none"></div>
-      
-      {/* Floating elements */}
-      <div className="absolute top-10 left-10 w-32 h-32 bg-gradient-to-r from-red-100 to-red-200 rounded-full opacity-20 animate-float"></div>
-      <div className="absolute bottom-10 right-10 w-40 h-40 bg-gradient-to-r from-red-200 to-red-300 rounded-full opacity-20 animate-float-delayed"></div>
       
       <motion.div
         ref={formRef}
@@ -206,95 +202,57 @@ export default function SignIn() {
         }}
         className="w-full max-w-md relative z-10"
       >
-        {/* Card with refined design */}
         <div className="bg-white rounded-2xl shadow-xl border border-red-100 overflow-hidden">
-          {/* Header section with red accent */}
-          <div className="bg-gradient-to-r from-red-600 to-red-700 p-8 text-center">
-            <motion.div
-              className="inline-block relative"
-              whileHover={{ rotate: 360 }}
-              transition={{ duration: 0.5 }}
-            >
-              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg mb-4">
-                <motion.svg
-                  className="w-8 h-8 text-red-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  animate={{ 
-                    scale: [1, 1.1, 1],
-                    rotate: [0, 5, 0, -5, 0]
-                  }}
-                  transition={{ 
-                    duration: 2,
-                    repeat: Infinity,
-                    repeatType: "reverse"
-                  }}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </motion.svg>
-              </div>
-              <motion.div
-                className="absolute -top-2 -right-2 w-6 h-6 bg-red-400 rounded-full"
-                animate={{ 
-                  scale: [1, 1.5, 1],
-                  opacity: [0.5, 0.8, 0.5]
-                }}
-                transition={{ 
-                  duration: 2,
-                  repeat: Infinity 
-                }}
-              />
-            </motion.div>
-            
-            <motion.h1
-              className="text-3xl font-bold text-white mb-2"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              Welcome Back
-            </motion.h1>
-            
-            <p className="text-red-100">Sign in to continue to your account</p>
-          </div>
-
-          {/* Form section */}
           <div className="p-8 space-y-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Error Alert */}
-              <AnimatePresence>
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="bg-red-50 border-l-4 border-red-500 rounded-lg p-4 flex items-start space-x-3">
-                      <svg className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            {/* Header */}
+            <div className="text-center">
+              <div className="mx-auto w-12 h-12 bg-red-600 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                </svg>
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                Welcome Back
+              </h2>
+              <p className="text-gray-600">Sign in to your account</p>
+            </div>
+
+            {/* ERROR */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 text-red-500 mr-3" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                       </svg>
-                      <p className="text-sm text-red-700">{error}</p>
+                      <p className="text-red-700 font-medium">{error}</p>
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-              {/* Email Field */}
+            {/* Form Fields */}
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
                 </label>
                 <div className="relative">
                   <input
                     type="email"
-                    required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 focus:outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    placeholder="you@example.com"
+                    placeholder="Enter your email"
                     disabled={loading}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    required
                   />
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
@@ -305,20 +263,19 @@ export default function SignIn() {
                 </div>
               </div>
 
-              {/* Password Field */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Password
                 </label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
-                    required
                     className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 focus:outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="Enter your password"
                     disabled={loading}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    required
                   />
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -328,56 +285,72 @@ export default function SignIn() {
                   <AnimatedEye />
                 </div>
               </div>
+            </div>
 
-              {/* Sign In Button */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                <button
-                  type="submit"
+            {/* Remember me & Forgot password */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
                   disabled={loading}
-                  className={`w-full py-3.5 rounded-lg font-semibold text-white transition-all duration-200 transform hover:scale-[1.02] focus:scale-[0.98]
-                    ${loading 
-                      ? "bg-red-400 cursor-not-allowed" 
-                      : "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 active:from-red-800 shadow-lg hover:shadow-xl"}`}
-                >
-                  <div className="flex items-center justify-center">
-                    {loading ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Signing in...
-                      </>
-                    ) : (
-                      "Sign In"
-                    )}
-                  </div>
-                </button>
-              </motion.div>
-
-              {/* Sign Up Link */}
-              <div className="pt-4 border-t border-gray-200">
-                <p className="text-center text-gray-600">
-                  Don't have an account?{" "}
-                  <Link
-                    to="/signup"
-                    className="text-red-600 font-semibold hover:text-red-800 hover:underline transition-colors"
-                  >
-                    Sign up now
-                  </Link>
-                </p>
+                />
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                  Remember me
+                </label>
               </div>
-            </form>
+              <div className="text-sm">
+                <a href="#" className="font-medium text-red-600 hover:text-red-500">
+                  Forgot password?
+                </a>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full py-3.5 rounded-lg font-semibold text-white transition-all duration-200 transform hover:scale-[1.02] focus:scale-[0.98]
+                ${loading 
+                  ? "bg-red-400 cursor-not-allowed" 
+                  : "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 active:from-red-800 shadow-lg hover:shadow-xl"}`}
+              onClick={handleSubmit}
+            >
+              <div className="flex items-center justify-center">
+                {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Signing in...
+                  </>
+                ) : (
+                  "Sign In"
+                )}
+              </div>
+            </button>
+
+            {/* SIGN UP LINK */}
+            <div className="pt-4 border-t border-gray-200">
+              <p className="text-center text-gray-600">
+                Don't have an account?{" "}
+                <Link
+                  to="/signup"
+                  className="text-red-600 font-semibold hover:text-red-800 hover:underline transition-colors"
+                >
+                  Sign Up
+                </Link>
+              </p>
+            </div>
           </div>
           
-          {/* Footer */}
+          {/* Footer Note */}
           <div className="bg-red-50 px-8 py-4 border-t border-red-100">
             <p className="text-xs text-gray-600 text-center">
-              Having trouble signing in? <a href="#" className="text-red-600 font-medium hover:underline">Get help</a>
+              By signing in, you agree to our Terms of Service and Privacy Policy
             </p>
           </div>
         </div>
@@ -394,28 +367,10 @@ export default function SignIn() {
 
       {/* Add CSS animations */}
       <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(180deg); }
-        }
-        
-        @keyframes float-delayed {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(20px) rotate(-180deg); }
-        }
-        
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
           10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
           20%, 40%, 60%, 80% { transform: translateX(5px); }
-        }
-        
-        .animate-float {
-          animation: float 8s ease-in-out infinite;
-        }
-        
-        .animate-float-delayed {
-          animation: float-delayed 10s ease-in-out infinite;
         }
         
         .particles-container canvas {
