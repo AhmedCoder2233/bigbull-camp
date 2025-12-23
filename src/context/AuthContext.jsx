@@ -52,46 +52,60 @@ export function AuthProvider({ children }) {
       .then(({ data }) => setProfile(data));
   }, [user]);
 
-const signUp = async (email, password, name) => {
-  try {
-    console.log("🔵 Starting signUp for:", email);
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: "http://localhost:5173",
-        data: {
-          name: name, // ✅ Store in metadata for trigger
-        }
-      },
-    });
-
-    console.log("🔵 Auth signUp response:", { data, error });
-
-    if (error) throw error;
-
-    if (!data.user) {
-      throw new Error("User creation failed");
-    }
-
-    // 👇 ACCEPT INVITES (optional, only if RPC exists)
+  /* ================= SIGN UP ================= */
+  const signUp = async (email, password, name) => {
     try {
-      await supabase.rpc("accept_workspace_invites", {
-        user_email: email,
-        user_id: data.user.id,
-      });
-    } catch (inviteErr) {
-      console.warn("⚠️ Invite acceptance skipped:", inviteErr);
-    }
+      // 👇 Step 1: Check if email already exists in profiles
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("email", email)
+        .maybeSingle();
 
-    console.log("✅ SignUp completed - check email for verification");
-    return "VERIFY_EMAIL";
-  } catch (err) {
-    console.error("❌ SignUp failed:", err);
-    throw err;
-  }
-};
+      if (existingProfile) {
+        throw new Error(
+          "An account with this email already exists. Please sign in instead."
+        );
+      }
+
+      // 👇 Step 2: Create auth user (sends verification email)
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: {
+            name: name, // Store name in user metadata for trigger
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      if (!data?.user) {
+        throw new Error("Failed to create user account");
+      }
+
+      // 👇 Profile will be created automatically by trigger after email verification
+      
+      // 👇 Step 3: Accept invites (optional)
+      // Note: This might fail if RPC doesn't exist, that's okay
+      try {
+        await supabase.rpc("accept_workspace_invites", {
+          user_email: email,
+          user_id: data.user.id,
+        });
+      } catch (err) {
+        console.warn("Invite acceptance skipped:", err);
+      }
+
+      return "VERIFY_EMAIL";
+    } catch (err) {
+      console.error("SignUp error:", err);
+      throw err;
+    }
+  };
+
   /* ================= SIGN IN ================= */
   const signIn = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -103,13 +117,17 @@ const signUp = async (email, password, name) => {
 
     if (!data.user.email_confirmed_at) {
       await supabase.auth.signOut();
-      throw new Error("Please verify your email first.");
+      throw new Error(
+        "Please verify your email first. Check your inbox for the verification link."
+      );
     }
   };
 
+  /* ================= LOGOUT ================= */
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setProfile(null);
   };
 
   return (
@@ -120,13 +138,3 @@ const signUp = async (email, password, name) => {
     </AuthContext.Provider>
   );
 }
-
-
-
-
-
-
-
-
-
-
