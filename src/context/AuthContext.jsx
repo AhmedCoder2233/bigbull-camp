@@ -53,39 +53,82 @@ export function AuthProvider({ children }) {
   }, [user]);
 
 const signUp = async (email, password, name) => {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: "http://localhost:5173",
-    },
-  });
-  if (error) throw error;
+  try {
+    console.log("🔵 Starting signUp for:", email);
 
-  // 👇 CHECK IF PROFILE ALREADY EXISTS
-  const { data: existingProfile } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("id", data.user.id)
-    .single();
-
-  // 👇 ONLY INSERT IF PROFILE DOESN'T EXIST
-  if (!existingProfile) {
-    await supabase.from("profiles").insert({
-      id: data.user.id,
-      name,
-      role: "member",
-      email: email, // ✅ always use this
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: "http://localhost:5173",
+        data: {
+          name: name, // Store name in user metadata
+        }
+      },
     });
+
+    console.log("🔵 Auth signUp response:", { data, error });
+
+    if (error) throw error;
+
+    // Check if user was created (some setups auto-confirm)
+    if (!data.user) {
+      throw new Error("User creation failed");
+    }
+
+    console.log("🔵 User created:", data.user.id);
+
+    // 👇 CHECK IF PROFILE ALREADY EXISTS
+    const { data: existingProfile, error: checkError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", data.user.id)
+      .maybeSingle(); // Use maybeSingle() instead of single()
+
+    console.log("🔵 Existing profile check:", { existingProfile, checkError });
+
+    // 👇 ONLY INSERT IF PROFILE DOESN'T EXIST
+    if (!existingProfile) {
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .insert({
+          id: data.user.id,
+          name,
+          role: "member",
+          email: email,
+        })
+        .select()
+        .single();
+
+      console.log("🔵 Profile insert result:", { profileData, profileError });
+
+      if (profileError) {
+        console.error("❌ Profile creation failed:", profileError);
+        throw profileError;
+      }
+    }
+
+    // 👇 ACCEPT INVITES USING SAME EMAIL
+    try {
+      const { data: inviteData, error: inviteError } = await supabase.rpc(
+        "accept_workspace_invites",
+        {
+          user_email: email,
+          user_id: data.user.id,
+        }
+      );
+      console.log("🔵 Invite acceptance result:", { inviteData, inviteError });
+    } catch (inviteErr) {
+      console.warn("⚠️ Invite acceptance failed (non-critical):", inviteErr);
+      // Don't throw - invites are optional
+    }
+
+    console.log("✅ SignUp completed successfully");
+    return "VERIFY_EMAIL";
+  } catch (err) {
+    console.error("❌ SignUp failed:", err);
+    throw err;
   }
-
-  // 👇 ACCEPT INVITES USING SAME EMAIL
-  await supabase.rpc("accept_workspace_invites", {
-    user_email: email, // ✅ NOT data.user.email
-    user_id: data.user.id,
-  });
-
-  return "VERIFY_EMAIL";
 };
   /* ================= SIGN IN ================= */
   const signIn = async (email, password) => {
@@ -115,6 +158,7 @@ const signUp = async (email, password, name) => {
     </AuthContext.Provider>
   );
 }
+
 
 
 
