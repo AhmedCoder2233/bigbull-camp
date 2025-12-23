@@ -13,27 +13,37 @@ export default function SignUp() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-    setLoading(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
+  setSuccess("");
+  setLoading(true);
 
-    try {
-      const res = await signUp(email, password, name);
+  try {
+    console.log("🚀 Submitting form with:", { email, name }); // Debug log
+    
+    const res = await signUp(email, password, name);
 
-      if (res === "VERIFY_EMAIL") {
-        setSuccess(
-          "Account created successfully 🎉 Please check your email to verify your account before signing in."
-        );
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+    console.log("✅ SignUp response:", res); // Debug log
+
+    // Check both string and object response
+    if (res === "VERIFY_EMAIL" || res?.status === "VERIFY_EMAIL") {
+      setSuccess(
+        "Account created successfully 🎉 Please check your email to verify your account before signing in."
+      );
+      
+      // Clear form
+      setEmail("");
+      setPassword("");
+      setName("");
     }
-  };
-
+  } catch (err) {
+    console.error("❌ Form error:", err); // Debug log
+    setError(err.message || "Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white to-red-50 p-4">
       <div className="w-full max-w-md">
@@ -184,3 +194,4 @@ export default function SignUp() {
     </div>
   );
 }
+
