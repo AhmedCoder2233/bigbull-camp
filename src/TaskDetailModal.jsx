@@ -13,7 +13,8 @@ import {
   FiFile,
   FiCheckCircle,
   FiAlertCircle,
-  FiLoader
+  FiLoader,
+  FiInfo
 } from "react-icons/fi";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
@@ -36,22 +37,20 @@ export default function TaskDetailPanel({
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState(null);
   const [assignedUserName, setAssignedUserName] = useState("");
+  const [notification, setNotification] = useState(null);
   
-  // Debug logging
-  useEffect(() => {
-    console.log("TaskDetailPanel - Current User ID:", currentUserId);
-    console.log("TaskDetailPanel - Task:", task);
-    console.log("TaskDetailPanel - User Role:", userRole);
-    console.log("TaskDetailPanel - Workspace ID:", workspaceId);
-  }, [currentUserId, task, userRole, workspaceId]);
+  // Show notification function
+  const showNotification = (message, type = "info") => {
+    setNotification({ message, type });
+    setTimeout(() => {
+      setNotification(null);
+    }, 4000);
+  };
 
   // Get current user's name from profiles table
   useEffect(() => {
     const fetchCurrentUserName = async () => {
-      console.log("Fetching user name for ID:", currentUserId);
-      
       if (!currentUserId) {
-        console.log("No currentUserId provided, setting to Guest");
         setUserName("Guest");
         return;
       }
@@ -64,20 +63,16 @@ export default function TaskDetailPanel({
           .single();
         
         if (error) {
-          console.error("Error fetching user profile:", error);
           setUserName("User");
           return;
         }
         
         if (data) {
-          console.log("User profile found:", data);
           setUserName(data.name || data.email?.split('@')[0] || "User");
         } else {
-          console.log("No profile data found");
           setUserName("User");
         }
       } catch (error) {
-        console.error("Error fetching user name:", error);
         setUserName("User");
       }
     };
@@ -90,7 +85,6 @@ export default function TaskDetailPanel({
     if (!task) return;
 
     const fetchTaskDetails = async () => {
-      console.log("Fetching details for task:", task.id);
       setEditedDescription(task.description || "");
       setError(null);
       
@@ -102,14 +96,11 @@ export default function TaskDetailPanel({
           .eq("task_id", task.id)
           .order("created_at", { ascending: false });
 
-        if (attachmentsError) {
-          console.error("Error fetching attachments:", attachmentsError);
-        } else {
-          console.log("Attachments fetched:", attachmentsData?.length || 0);
+        if (!attachmentsError) {
           setAttachments(attachmentsData || []);
         }
       } catch (err) {
-        console.error("Error in attachments fetch:", err);
+        // Silent error
       }
 
       // Fetch comments
@@ -138,16 +129,12 @@ export default function TaskDetailPanel({
         .order("created_at", { ascending: true });
 
       if (error) {
-        console.error("Error fetching comments:", error);
         setError("Failed to load comments");
         return;
       }
 
-      console.log("Comments fetched:", commentsData?.length || 0, "comments");
-
       if (commentsData && commentsData.length > 0) {
         const userIds = [...new Set(commentsData.map(c => c.user_id).filter(Boolean))];
-        console.log("User IDs in comments:", userIds);
         
         let userProfiles = {};
         
@@ -156,8 +143,6 @@ export default function TaskDetailPanel({
             .from("profiles")
             .select("id, name, email")
             .in("id", userIds);
-
-          console.log("Profiles fetched for comments:", profilesData);
 
           if (profilesData) {
             profilesData.forEach(profile => {
@@ -178,7 +163,6 @@ export default function TaskDetailPanel({
         setComments([]);
       }
     } catch (error) {
-      console.error("Error fetching comments:", error);
       setError("Failed to load comments");
       setComments([]);
     }
@@ -199,7 +183,6 @@ export default function TaskDetailPanel({
         .single();
       
       if (error) {
-        console.error("Error fetching assigned user:", error);
         setAssignedUserName("User");
         return;
       }
@@ -210,17 +193,11 @@ export default function TaskDetailPanel({
         setAssignedUserName("User");
       }
     } catch (error) {
-      console.error("Error fetching assigned user:", error);
       setAssignedUserName("User");
     }
   };
 
   const handleAddComment = async () => {
-    console.log("handleAddComment called");
-    console.log("newComment:", newComment);
-    console.log("currentUserId:", currentUserId);
-    console.log("task:", task);
-    
     setError(null);
     
     // Check for empty comment
@@ -231,7 +208,6 @@ export default function TaskDetailPanel({
     
     // Check if user is authenticated
     if (!currentUserId) {
-      console.error("currentUserId is null/undefined");
       setError("You must be logged in to comment. Please refresh the page or log in again.");
       return;
     }
@@ -247,10 +223,6 @@ export default function TaskDetailPanel({
     const commentText = newComment.trim();
     
     try {
-      console.log("Adding comment to task:", task.id);
-      console.log("User ID:", currentUserId);
-      console.log("Comment text:", commentText);
-
       const { data: comment, error: insertError } = await supabase
         .from("task_comments")
         .insert({
@@ -264,8 +236,6 @@ export default function TaskDetailPanel({
         .single();
 
       if (insertError) {
-        console.error("Insert error details:", insertError);
-        
         if (insertError.code === '42501') {
           setError("Permission denied. You may not have permission to add comments.");
         } else if (insertError.code === '23503') {
@@ -280,8 +250,6 @@ export default function TaskDetailPanel({
         return;
       }
 
-      console.log("Comment inserted successfully:", comment);
-
       const newCommentWithUser = {
         ...comment,
         user_name: userName
@@ -289,6 +257,7 @@ export default function TaskDetailPanel({
 
       setComments(prev => [...prev, newCommentWithUser]);
       setNewComment("");
+      showNotification("Comment added successfully!", "success");
       
       try {
         await supabase
@@ -298,12 +267,12 @@ export default function TaskDetailPanel({
           })
           .eq("id", task.id);
       } catch (updateError) {
-        console.error("Error updating task timestamp:", updateError);
+        // Silent error for task timestamp update
       }
 
     } catch (error) {
-      console.error("Unexpected error adding comment:", error);
       setError("An unexpected error occurred. Please try again.");
+      showNotification("Failed to add comment", "error");
     } finally {
       setIsPosting(false);
     }
@@ -356,6 +325,7 @@ export default function TaskDetailPanel({
       if (dbError) throw dbError;
 
       setAttachments(prev => [...prev, attachment]);
+      showNotification("File uploaded successfully!", "success");
       
       await supabase
         .from("tasks")
@@ -363,8 +333,7 @@ export default function TaskDetailPanel({
         .eq("id", task.id);
 
     } catch (error) {
-      console.error("Error uploading file:", error);
-      alert("Failed to upload file");
+      showNotification("Failed to upload file. Please try again.", "error");
     } finally {
       setIsUploading(false);
     }
@@ -386,14 +355,14 @@ export default function TaskDetailPanel({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      showNotification("Download started!", "success");
     } catch (error) {
-      console.error("Error downloading file:", error);
-      alert("Failed to download file");
+      showNotification("Failed to download file. Please try again.", "error");
     }
   };
 
   const handleDeleteAttachment = async (attachmentId) => {
-    if (!confirm("Delete this attachment?")) return;
+    if (!confirm("Are you sure you want to delete this attachment?")) return;
 
     try {
       const attachment = attachments.find(a => a.id === attachmentId);
@@ -410,6 +379,7 @@ export default function TaskDetailPanel({
         .eq("id", attachmentId);
 
       setAttachments(prev => prev.filter(a => a.id !== attachmentId));
+      showNotification("Attachment deleted successfully!", "success");
       
       await supabase
         .from("tasks")
@@ -417,8 +387,7 @@ export default function TaskDetailPanel({
         .eq("id", task.id);
 
     } catch (error) {
-      console.error("Error deleting attachment:", error);
-      alert("Failed to delete attachment");
+      showNotification("Failed to delete attachment. Please try again.", "error");
     }
   };
 
@@ -438,19 +407,60 @@ export default function TaskDetailPanel({
 
       task.description = editedDescription;
       setEditing(false);
-      alert("Description updated successfully!");
+      showNotification("Description updated successfully!", "success");
     } catch (error) {
-      console.error("Error updating description:", error);
-      alert("Failed to update description");
+      showNotification("Failed to update description. Please try again.", "error");
     }
   };
 
   if (!task) return null;
 
+  // Notification component
+  const Notification = () => {
+    if (!notification) return null;
+    
+    const bgColor = {
+      success: "bg-green-50 border-green-200 text-green-800",
+      error: "bg-red-50 border-red-200 text-red-800",
+      info: "bg-blue-50 border-blue-200 text-blue-800"
+    };
+
+    const iconColor = {
+      success: "text-green-600",
+      error: "text-red-600",
+      info: "text-blue-600"
+    };
+
+    return (
+      <div className={`fixed top-4 right-4 z-50 border rounded-lg p-4 shadow-lg max-w-sm ${bgColor[notification.type]}`}>
+        <div className="flex items-center gap-3">
+          {notification.type === "success" ? (
+            <FiCheckCircle className={`w-5 h-5 ${iconColor[notification.type]}`} />
+          ) : notification.type === "error" ? (
+            <FiAlertCircle className={`w-5 h-5 ${iconColor[notification.type]}`} />
+          ) : (
+            <FiInfo className={`w-5 h-5 ${iconColor[notification.type]}`} />
+          )}
+          <div className="flex-1">
+            <p className="text-sm font-medium">{notification.message}</p>
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            className={`${iconColor[notification.type]} hover:opacity-70`}
+          >
+            <FiX className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={`fixed inset-y-0 right-0 w-full md:w-[500px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out ${
       isOpen ? 'translate-x-0' : 'translate-x-full'
     }`}>
+      <Notification />
+      
       <div className="sticky top-0 z-10 bg-white border-b border-gray-200 p-4">
         <div className="flex items-center justify-between">
           <div>
@@ -480,14 +490,7 @@ export default function TaskDetailPanel({
 
       <div className="h-[calc(100vh-60px)] overflow-y-auto pb-20">
         <div className="p-4 space-y-6">
-          {/* Debug Info */}
-          <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg text-xs">
-            <p className="font-medium text-blue-800 mb-1">User Status:</p>
-            <p>Logged In: <span className="font-medium">{currentUserId ? "✅ Yes" : "❌ No"}</span></p>
-            <p>User ID: <span className="font-mono">{currentUserId ? currentUserId.slice(0, 8) + "..." : "null"}</span></p>
-            <p>Display Name: <span className="font-medium">{userName}</span></p>
-            <p>Role: <span className="font-medium">{userRole}</span></p>
-          </div>
+          {/* Debug Info Removed */}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-3">
