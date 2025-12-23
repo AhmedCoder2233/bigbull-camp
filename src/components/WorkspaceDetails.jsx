@@ -66,7 +66,7 @@ export default function WorkspaceDetails() {
       },
       { 
         id: "invite", 
-        label: "Team Members", 
+        label: "Invite Members", 
         icon: FiUsers, 
         color: "red",
         description: "Manage team access and permissions"
@@ -731,3 +731,4 @@ export default function WorkspaceDetails() {
     </div>
   );
 }
+
