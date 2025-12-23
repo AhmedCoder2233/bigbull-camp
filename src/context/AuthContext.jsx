@@ -56,12 +56,16 @@ const signUp = async (email, password, name) => {
   try {
     const cleanEmail = email.trim().toLowerCase();
     
+    // Step 1: Sign up user
     const { data, error } = await supabase.auth.signUp({
       email: cleanEmail,
       password,
       options: {
-        emailRedirectTo: "https://bigbull-camp-sigma.vercel.app/",
-        data: { name: name }
+        emailRedirectTo: "https://bigbull-camp-sigma.vercel.app/auth/callback",
+        data: { 
+          name: name,
+          email: cleanEmail 
+        }
       },
     });
 
@@ -72,23 +76,24 @@ const signUp = async (email, password, name) => {
       throw error;
     }
 
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: data.user.id,
-      name,
-      role: "member",
-      email: cleanEmail,
-    });
-
-    if (profileError) {
-      console.error("Profile error:", profileError);
-      // Profile error ko throw mat karo, bas log karo
+    // Check if user exists
+    if (!data?.user) {
+      throw new Error('Failed to create user account');
     }
 
-    console.log("✅ User created successfully");
-    return "VERIFY_EMAIL";
+    console.log("✅ User signup successful:", data.user.id);
+    
+    // IMPORTANT: Profile database trigger se automatically insert hoga
+    // Manual insert ki zarurat nahi (neeche dekho database setup)
+    
+    return {
+      status: "VERIFY_EMAIL",
+      user: data.user,
+      session: data.session
+    };
     
   } catch (error) {
-    console.error("Signup error:", error);
+    console.error("❌ Signup error:", error);
     throw error;
   }
 };
@@ -120,6 +125,7 @@ const signUp = async (email, password, name) => {
     </AuthContext.Provider>
   );
 }
+
 
 
 
