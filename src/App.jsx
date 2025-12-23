@@ -5,7 +5,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Header from "./components/Header";
 import Sidebar from "./components/LandingPage";
 import SignIn from "./SignIn";
-import SignUp from "./SignUp";
 
 import { AuthProvider, AuthContext } from "./context/AuthContext";
 import "./App.css";
@@ -422,7 +421,6 @@ export default function App() {
                   <Routes>
                     {/* PUBLIC ROUTES */}
                     <Route path="/signin" element={<SignIn />} />
-                    <Route path="/signup" element={<SignUp />} />
                     
                     {/* PRIVATE ROUTES */}
                     <Route
