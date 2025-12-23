@@ -53,6 +53,24 @@ export function AuthProvider({ children }) {
   }, [user]);
 
 const signUp = async (email, password, name) => {
+  // 👇 FIRST CHECK IF USER ALREADY EXISTS
+  const { data: existingUser, error: checkError } = await supabase
+    .from('profiles')
+    .select('email')
+    .eq('email', email)
+    .maybeSingle(); // Use maybeSingle() instead of single()
+
+  if (checkError && checkError.code !== 'PGRST116') {
+    // PGRST116 means "no rows returned" which is okay
+    throw checkError;
+  }
+
+  // 👇 If user already exists with this email
+  if (existingUser) {
+    throw new Error('An account with this email already exists. Please use a different email or sign in.');
+  }
+
+  // 👇 Proceed with signup
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -68,12 +86,12 @@ const signUp = async (email, password, name) => {
     id: data.user.id,
     name,
     role: "member",
-    email: email, // ✅ always use this
+    email: email,
   });
 
   // 👇 ACCEPT INVITES USING SAME EMAIL
   await supabase.rpc("accept_workspace_invites", {
-    user_email: email, // ✅ NOT data.user.email
+    user_email: email,
     user_id: data.user.id,
   });
 
@@ -107,4 +125,5 @@ const signUp = async (email, password, name) => {
     </AuthContext.Provider>
   );
 }
+
 
