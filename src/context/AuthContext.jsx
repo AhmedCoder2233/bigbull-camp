@@ -54,66 +54,66 @@ export function AuthProvider({ children }) {
 
 const signUp = async (email, password, name) => {
   try {
+    // 👇 **SUPABASE AUTH.SIGNUP WILL AUTOMATICALLY SEND VERIFICATION EMAIL**
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: email.trim().toLowerCase(),
       password,
       options: {
-        // 👇 Dono URLs add karo
-        emailRedirectTo: "https://bigbull-camp-sigma.vercel.app/auth/callback",
-        data: {
-          name: name,
-        }
+        emailRedirectTo: "https://bigbull-camp-sigma.vercel.app/", // ✅ Correct URL
+        data: { name: name }
       },
     });
 
     if (error) {
+      // Handle specific errors
       if (error.message.includes('already registered') || 
           error.message.includes('User already registered')) {
-        throw new Error('An account with this email already exists. Please sign in instead.');
+        throw new Error('An account with this email already exists. Please sign in.');
       }
       throw error;
     }
 
-    console.log("Signup response:", data); // Debug ke liye
+    console.log("Signup Data:", data);
     
-    // Agar user confirmed nahi hai toh profile create karo
-    if (!data.user?.email_confirmed_at) {
-      // 👇 PROFILE INSERT
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: data.user.id,
-        name,
-        role: "member",
-        email: email,
-      });
-
-      if (profileError) {
-        console.error("Profile creation error:", profileError);
-      }
-
-      // 👇 ACCEPT INVITES
-      const { error: inviteError } = await supabase.rpc("accept_workspace_invites", {
-        user_email: email,
-        user_id: data.user.id,
-      });
-
-      if (inviteError) {
-        console.error("Invite acceptance error:", inviteError);
-      }
-
-      // Email confirmation send hone ke baad ye message show karo
-      if (data.user?.identities?.length === 0) {
-        // This means user already exists but not confirmed
-        return "CHECK_EMAIL_FOR_CONFIRMATION";
-      }
-      
-      return "VERIFY_EMAIL";
+    // Check if email was sent
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      // User exists but email not verified
+      throw new Error('Account exists but not verified. Please check your email.');
     }
-    
-    // Agar already confirmed hai toh sign in karne do
-    return "SIGN_IN_SUCCESS";
+
+    // Create profile
+    const { error: profileError } = await supabase.from("profiles").insert({
+      id: data.user.id,
+      name,
+      role: "member",
+      email: email,
+    });
+
+    if (profileError) {
+      console.error("Profile error (non-critical):", profileError);
+    }
+
+    // **IF EMAIL NOT SENT, MANUALLY RESEND**
+    if (data.user && !data.user.email_confirmed_at) {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: "https://bigbull-camp-sigma.vercel.app/",
+        }
+      });
+      
+      if (resendError) {
+        console.error("Resend error:", resendError);
+      } else {
+        console.log("Verification email resent!");
+      }
+    }
+
+    return "VERIFY_EMAIL";
     
   } catch (error) {
-    console.error("Signup error:", error);
+    console.error("Full signup error:", error);
     throw error;
   }
 };
@@ -145,6 +145,7 @@ const signUp = async (email, password, name) => {
     </AuthContext.Provider>
   );
 }
+
 
 
 
