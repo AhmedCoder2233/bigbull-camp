@@ -40,7 +40,39 @@ export default function TaskDetailPanel({
   const [error, setError] = useState(null);
   const [assignedUserName, setAssignedUserName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  
+  const [createdByName, setCreatedByName] = useState("");
+
+// Fetch created by user name
+useEffect(() => {
+  const fetchCreatedByName = async () => {
+    if (!task?.created_by) {
+      setCreatedByName("Unknown");
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("name, email")
+        .eq("id", task.created_by)
+        .single();
+      
+      if (error || !data) {
+        setCreatedByName("User");
+        return;
+      }
+      
+      setCreatedByName(data.name || data.email?.split('@')[0] || "User");
+    } catch (error) {
+      console.error("Error fetching created by user:", error);
+      setCreatedByName("User");
+    }
+  };
+
+  if (task) {
+    fetchCreatedByName();
+  }
+}, [task]);
   // Debug logging
   useEffect(() => {
     console.log("TaskDetailPanel - Current User ID:", currentUserId);
@@ -222,7 +254,7 @@ export default function TaskDetailPanel({
 
   // Check if user can edit task (task creator or admin)
   const canEditTask = () => {
-    return userRole === "admin" || task.created_by === currentUserId;
+    return userRole === "admin" || task.assigned_to === currentUserId;
   };
 
   const handleAddComment = async () => {
@@ -585,7 +617,6 @@ export default function TaskDetailPanel({
               <p className="font-medium text-blue-800 mb-1">User Status:</p>
               <p>Logged In: <span className="font-medium">{currentUserId ? "✅ Yes" : "❌ No"}</span></p>
               <p>User ID: <span className="font-mono">{currentUserId ? currentUserId.slice(0, 8) + "..." : "null"}</span></p>
-              <p>Task Creator ID: <span className="font-mono">{task.created_by ? task.created_by.slice(0, 8) + "..." : "null"}</span></p>
               <p>Can Edit: <span className="font-medium">{canEditTask() ? "✅ Yes" : "❌ No"}</span></p>
               <p>Display Name: <span className="font-medium">{userName}</span></p>
               <p>Role: <span className="font-medium">{userRole}</span></p>
@@ -797,6 +828,21 @@ export default function TaskDetailPanel({
                 </p>
               )}
             </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+  <div className="flex items-center gap-2 text-gray-600 mb-2">
+    <FiUser className="w-4 h-4" />
+    <span className="text-sm font-medium">Assigned By</span>
+  </div>
+  <p className="font-semibold text-gray-900 truncate">
+    {createdByName}
+  </p>
+  {task.created_by && (
+    <p className="text-xs text-gray-500 mt-1 truncate">
+      ID: {task.created_by.slice(0, 8)}...
+    </p>
+  )}
+</div>
 
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <div className="flex items-center gap-2 text-gray-600 mb-2">
