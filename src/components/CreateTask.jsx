@@ -12,7 +12,7 @@ import {
   FiMail
 } from "react-icons/fi";
 import emailjs from '@emailjs/browser'; 
-export default function CreateTask({ workspaceId, userId, onTaskCreated }) {
+export default function CreateTask({ workspaceId, onTaskCreated }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
@@ -24,8 +24,19 @@ export default function CreateTask({ workspaceId, userId, onTaskCreated }) {
   const [successMessage, setSuccessMessage] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
+  const [userId, setUserId] = useState(null); // ✅ Add this
 
   emailjs.init(import.meta.env.VITE_EMAIL_API);
+
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+      }
+    };
+    getCurrentUser();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -102,7 +113,7 @@ Due Date: ${dueDate ? new Date(dueDate).toLocaleDateString() : "Not set"}
       templateParams
     );
 
-    console.log('✅ Email sent successfully');
+    console.log('✅ Email sent successfully:', result);
     return { success: true };
 
   } catch (error) {
@@ -168,7 +179,7 @@ Due Date: ${dueDate ? new Date(dueDate).toLocaleDateString() : "Not set"}
         description: description.trim() || null,
         status: "planning",
         assigned_to: assignedTo || null,
-        created_by: userId || null,
+        created_by: userId,
         due_date: dueDate || null,
       };
 
@@ -508,4 +519,3 @@ Due Date: ${dueDate ? new Date(dueDate).toLocaleDateString() : "Not set"}
     </div>
   );
 }
-
