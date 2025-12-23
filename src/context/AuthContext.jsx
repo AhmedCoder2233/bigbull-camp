@@ -54,66 +54,41 @@ export function AuthProvider({ children }) {
 
 const signUp = async (email, password, name) => {
   try {
-    // 👇 **SUPABASE AUTH.SIGNUP WILL AUTOMATICALLY SEND VERIFICATION EMAIL**
+    const cleanEmail = email.trim().toLowerCase();
+    
     const { data, error } = await supabase.auth.signUp({
-      email: email.trim().toLowerCase(),
+      email: cleanEmail,
       password,
       options: {
-        emailRedirectTo: "https://bigbull-camp-sigma.vercel.app/", // ✅ Correct URL
+        emailRedirectTo: "https://bigbull-camp-sigma.vercel.app/",
         data: { name: name }
       },
     });
 
     if (error) {
-      // Handle specific errors
-      if (error.message.includes('already registered') || 
-          error.message.includes('User already registered')) {
+      if (error.message.includes('already registered')) {
         throw new Error('An account with this email already exists. Please sign in.');
       }
       throw error;
     }
 
-    console.log("Signup Data:", data);
-    
-    // Check if email was sent
-    if (data.user && data.user.identities && data.user.identities.length === 0) {
-      // User exists but email not verified
-      throw new Error('Account exists but not verified. Please check your email.');
-    }
-
-    // Create profile
     const { error: profileError } = await supabase.from("profiles").insert({
       id: data.user.id,
       name,
       role: "member",
-      email: email,
+      email: cleanEmail,
     });
 
     if (profileError) {
-      console.error("Profile error (non-critical):", profileError);
+      console.error("Profile error:", profileError);
+      // Profile error ko throw mat karo, bas log karo
     }
 
-    // **IF EMAIL NOT SENT, MANUALLY RESEND**
-    if (data.user && !data.user.email_confirmed_at) {
-      const { error: resendError } = await supabase.auth.resend({
-        type: 'signup',
-        email: email,
-        options: {
-          emailRedirectTo: "https://bigbull-camp-sigma.vercel.app/",
-        }
-      });
-      
-      if (resendError) {
-        console.error("Resend error:", resendError);
-      } else {
-        console.log("Verification email resent!");
-      }
-    }
-
+    console.log("✅ User created successfully");
     return "VERIFY_EMAIL";
     
   } catch (error) {
-    console.error("Full signup error:", error);
+    console.error("Signup error:", error);
     throw error;
   }
 };
@@ -145,6 +120,7 @@ const signUp = async (email, password, name) => {
     </AuthContext.Provider>
   );
 }
+
 
 
 
