@@ -824,11 +824,11 @@ export default function LandingPage() {
                   transition={{ duration: 0.6 }}
                   className="w-20 h-20 mx-auto mb-8 rounded-full border-4 border-red-100 flex items-center justify-center"
                 >
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-r from-red-600 to-red-700 flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-r flex items-center justify-center">
                     <img 
                       src="/logo.png" 
                       alt="BigBull CAMP Logo" 
-                      className="w-10 h-10 object-contain"
+                      className="w-16 h-16 object-contain"
                     />
                   </div>
                 </motion.div>
@@ -899,11 +899,11 @@ export default function LandingPage() {
               className="flex items-center gap-4 group cursor-pointer"
               onClick={() => navigate("/")}
             >
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-r from-red-600 to-red-700 flex items-center justify-center shadow-lg">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-r flex items-center justify-center shadow-lg">
                 <img 
                   src="/logo.png" 
                   alt="BigBull CAMP Logo" 
-                  className="w-8 h-8 object-contain"
+                  className="w-16 h-16 object-contain"
                 />
               </div>
               <div>
