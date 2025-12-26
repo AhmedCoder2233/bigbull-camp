@@ -73,19 +73,10 @@ useEffect(() => {
     fetchCreatedByName();
   }
 }, [task]);
-  // Debug logging
-  useEffect(() => {
-    console.log("TaskDetailPanel - Current User ID:", currentUserId);
-    console.log("TaskDetailPanel - Task:", task);
-    console.log("TaskDetailPanel - User Role:", userRole);
-    console.log("TaskDetailPanel - Workspace ID:", workspaceId);
-  }, [currentUserId, task, userRole, workspaceId]);
 
   // Get current user's name from profiles table
   useEffect(() => {
     const fetchCurrentUserName = async () => {
-      console.log("Fetching user name for ID:", currentUserId);
-      
       if (!currentUserId) {
         console.log("No currentUserId provided, setting to Guest");
         setUserName("Guest");
@@ -106,7 +97,6 @@ useEffect(() => {
         }
         
         if (data) {
-          console.log("User profile found:", data);
           setUserName(data.name || data.email?.split('@')[0] || "User");
         } else {
           console.log("No profile data found");
@@ -126,7 +116,6 @@ useEffect(() => {
     if (!task) return;
 
     const fetchTaskDetails = async () => {
-      console.log("Fetching details for task:", task.id);
       setEditedDescription(task.description || "");
       setEditedTitle(task.title || "");
       setError(null);
@@ -142,7 +131,6 @@ useEffect(() => {
         if (attachmentsError) {
           console.error("Error fetching attachments:", attachmentsError);
         } else {
-          console.log("Attachments fetched:", attachmentsData?.length || 0);
           setAttachments(attachmentsData || []);
         }
       } catch (err) {
@@ -180,11 +168,8 @@ useEffect(() => {
         return;
       }
 
-      console.log("Comments fetched:", commentsData?.length || 0, "comments");
-
       if (commentsData && commentsData.length > 0) {
         const userIds = [...new Set(commentsData.map(c => c.user_id).filter(Boolean))];
-        console.log("User IDs in comments:", userIds);
         
         let userProfiles = {};
         
@@ -193,8 +178,6 @@ useEffect(() => {
             .from("profiles")
             .select("id, name, email")
             .in("id", userIds);
-
-          console.log("Profiles fetched for comments:", profilesData);
 
           if (profilesData) {
             profilesData.forEach(profile => {
@@ -258,10 +241,6 @@ useEffect(() => {
   };
 
   const handleAddComment = async () => {
-    console.log("handleAddComment called");
-    console.log("newComment:", newComment);
-    console.log("currentUserId:", currentUserId);
-    console.log("task:", task);
     
     setError(null);
     
@@ -289,9 +268,6 @@ useEffect(() => {
     const commentText = newComment.trim();
     
     try {
-      console.log("Adding comment to task:", task.id);
-      console.log("User ID:", currentUserId);
-      console.log("Comment text:", commentText);
 
       const { data: comment, error: insertError } = await supabase
         .from("task_comments")
@@ -321,8 +297,6 @@ useEffect(() => {
         setIsPosting(false);
         return;
       }
-
-      console.log("Comment inserted successfully:", comment);
 
       const newCommentWithUser = {
         ...comment,
@@ -939,3 +913,4 @@ useEffect(() => {
     </div>
   );
 }
+
