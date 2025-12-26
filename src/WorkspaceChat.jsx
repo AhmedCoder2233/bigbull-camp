@@ -714,7 +714,6 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
         async (payload) => {
           const newMessage = payload.new;
           
-          console.log("📨 Global new message received:", newMessage);
           
           // ✅ Agar message current active conversation ka hai
           if (newMessage.conversation_id === activeConversation?.id) {
@@ -1125,14 +1124,11 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
           });
           
           setOnlineUsers(online);
-          console.log("🟢 Online users synced:", online.size);
         })
         .on('presence', { event: 'join' }, ({ key }) => {
-          console.log("👋 User joined:", key);
           setOnlineUsers(prev => new Set([...prev, key]));
         })
         .on('presence', { event: 'leave' }, ({ key }) => {
-          console.log("👋 User left:", key);
           setOnlineUsers(prev => {
             const updated = new Set(prev);
             updated.delete(key);
@@ -1141,7 +1137,6 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
         });
 
       await presenceChannel.subscribe(async (status) => {
-        console.log("📡 Presence status:", status);
         if (status === 'SUBSCRIBED') {
           await presenceChannel.track({
             user_id: currentUser.id,
@@ -1177,8 +1172,6 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
       
       return;
     }
-
-    console.log('🔄 Setting up realtime for conversation:', activeConversation.id);
     
     const initializeChat = async () => {
       // ✅ FIX #1: Sirf ek loading state
@@ -1236,7 +1229,6 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     channel
       .on('broadcast', { event: 'typing' }, ({ payload }) => {
         if (payload.user_id !== currentUser?.id && payload.conversation_id === conversationId) {
-          console.log('✍️ User typing:', payload.user_name);
           setTypingUsers(prev => ({
             ...prev,
             [payload.user_id]: {
@@ -1310,7 +1302,6 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
   // ✅ FIX #1: ENHANCED LOAD MESSAGES: Single loading state
   const loadMessages = async (conversationId) => {
     try {
-      console.log("📥 Loading messages for conversation:", conversationId);
       
       const { data: messagesData, error: messagesError } = await supabase
         .from("messages")
@@ -1583,8 +1574,6 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
         .single();
 
       if (error) throw error;
-
-      console.log("✅ Message saved:", data.id);
 
       // ✅ Optimistic message ko real message se replace karo
       setMessages(prev => prev.map(msg => 
@@ -4088,3 +4077,4 @@ export default function WorkspaceChat({ workspaceId, currentUser }) {
     </>
   );
 }
+
