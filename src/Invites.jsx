@@ -12,8 +12,15 @@ export default function Invites() {
   const [invites, setInvites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
-
+const handleError = (error, userMessage = "Something went wrong") => {
+  if (import.meta.env.DEV) {
+    console.error(error);
+  }
+  setErrorMessage(userMessage);
+  setTimeout(() => setErrorMessage(""), 3000);
+};
   useEffect(() => {
     if (!user) return;
 
@@ -29,7 +36,7 @@ export default function Invites() {
         .order("created_at", { ascending: false });
 
       if (inviteError) {
-        console.error("Invite fetch error:", inviteError);
+        handleError(inviteError, "Failed to Fetch Invites");
         setInvites([]);
         setLoading(false);
         return;
@@ -50,8 +57,8 @@ export default function Invites() {
         .in("id", workspaceIds);
 
       if (workspaceError) {
-        console.error("Workspace fetch error:", workspaceError);
         setInvites([]);
+        handleError(workspaceError, "Failed to Fetch Workspaces");
         setLoading(false);
         return;
       }
@@ -127,8 +134,7 @@ export default function Invites() {
       }
       
     } catch (error) {
-      console.error("Error responding to invite:", error);
-      alert("Failed to process invite. Please try again.");
+      handleError(error, "Failed to process invite");
     } finally {
       setProcessing(null);
     }
@@ -136,7 +142,11 @@ export default function Invites() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-
+{errorMessage && (
+  <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg">
+    {errorMessage}
+  </div>
+)}
       <div className="flex">
         <main className="flex-1 p-4 md:p-6 max-w-4xl mx-auto w-full">
           <div className="mb-8">
@@ -246,3 +256,4 @@ export default function Invites() {
   );
 
 }
+
