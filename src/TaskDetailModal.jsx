@@ -14,7 +14,9 @@ import {
   FiCheckCircle,
   FiAlertCircle,
   FiLoader,
-  FiType
+  FiType,
+  FiClock,
+  FiActivity
 } from "react-icons/fi";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
@@ -29,6 +31,7 @@ export default function TaskDetailPanel({
 }) {
   const [attachments, setAttachments] = useState([]);
   const [comments, setComments] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
@@ -111,6 +114,87 @@ useEffect(() => {
     fetchCurrentUserName();
   }, [currentUserId]);
 
+  // Function to log activity
+  const logActivity = async (action, details = {}, oldValue = null, newValue = null) => {
+    if (!task || !currentUserId) return;
+
+    try {
+      const activityData = {
+        id: uuidv4(),
+        task_id: task.id,
+        user_id: currentUserId,
+        action: action,
+        details: details,
+        old_value: oldValue,
+        new_value: newValue,
+        created_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from("task_activities")
+        .insert(activityData);
+
+      if (error) {
+        console.error("Error logging activity:", error);
+      } else {
+        // Refresh activities list
+        fetchActivities();
+      }
+    } catch (error) {
+      console.error("Error logging activity:", error);
+    }
+  };
+
+  // Function to fetch activities
+  const fetchActivities = async () => {
+    if (!task) return;
+    
+    try {
+      const { data: activitiesData, error } = await supabase
+        .from("task_activities")
+        .select("*")
+        .eq("task_id", task.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching activities:", error);
+        return;
+      }
+
+      if (activitiesData && activitiesData.length > 0) {
+        const userIds = [...new Set(activitiesData.map(a => a.user_id).filter(Boolean))];
+        
+        let userProfiles = {};
+        
+        if (userIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from("profiles")
+            .select("id, name, email")
+            .in("id", userIds);
+
+          if (profilesData) {
+            profilesData.forEach(profile => {
+              userProfiles[profile.id] = profile.name || profile.email?.split('@')[0] || "User";
+            });
+          }
+        }
+
+        const activitiesWithUsers = activitiesData.map(activity => ({
+          ...activity,
+          user_name: activity.user_id ? 
+            (userProfiles[activity.user_id] || "User") : 
+            "System"
+        }));
+
+        setActivities(activitiesWithUsers);
+      } else {
+        setActivities([]);
+      }
+    } catch (error) {
+      console.error("Error fetching activities:", error);
+    }
+  };
+
   // Fetch task details and comments
   useEffect(() => {
     if (!task) return;
@@ -139,6 +223,9 @@ useEffect(() => {
 
       // Fetch comments
       await fetchComments();
+      
+      // Fetch activities
+      await fetchActivities();
       
       // Fetch assigned user name
       if (task.assigned_to) {
@@ -317,6 +404,11 @@ useEffect(() => {
         console.error("Error updating task timestamp:", updateError);
       }
 
+      // Log activity for comment
+      await logActivity("comment_added", {
+        comment_length: commentText.length
+      });
+
     } catch (error) {
       console.error("Unexpected error adding comment:", error);
       setError("An unexpected error occurred. Please try again.");
@@ -378,6 +470,13 @@ useEffect(() => {
         .update({ updated_at: new Date().toISOString() })
         .eq("id", task.id);
 
+      // Log activity for file upload
+      await logActivity("file_uploaded", {
+        file_name: file.name,
+        file_size: file.size,
+        file_type: file.type
+      });
+
     } catch (error) {
       console.error("Error uploading file:", error);
       alert("Failed to upload file");
@@ -402,6 +501,12 @@ useEffect(() => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
+      // Log activity for file download
+      await logActivity("file_downloaded", {
+        file_name: attachment.file_name,
+        file_id: attachment.id
+      });
     } catch (error) {
       console.error("Error downloading file:", error);
       alert("Failed to download file");
@@ -432,6 +537,12 @@ useEffect(() => {
         .update({ updated_at: new Date().toISOString() })
         .eq("id", task.id);
 
+      // Log activity for file deletion
+      await logActivity("file_deleted", {
+        file_name: attachment.file_name,
+        file_size: attachment.file_size
+      });
+
     } catch (error) {
       console.error("Error deleting attachment:", error);
       alert("Failed to delete attachment");
@@ -443,6 +554,8 @@ useEffect(() => {
 
     setIsSaving(true);
     try {
+      const oldDescription = task.description || "";
+      
       const { error } = await supabase
         .from("tasks")
         .update({ 
@@ -452,6 +565,17 @@ useEffect(() => {
         .eq("id", task.id);
 
       if (error) throw error;
+
+      // Log activity for description change
+      await logActivity(
+        "description_updated",
+        {
+          old_length: oldDescription.length,
+          new_length: editedDescription.length
+        },
+        oldDescription,
+        editedDescription
+      );
 
       task.description = editedDescription;
       setEditingDescription(false);
@@ -473,6 +597,8 @@ useEffect(() => {
 
     setIsSaving(true);
     try {
+      const oldTitle = task.title || "";
+      
       const { error } = await supabase
         .from("tasks")
         .update({ 
@@ -483,6 +609,17 @@ useEffect(() => {
 
       if (error) throw error;
 
+      // Log activity for title change
+      await logActivity(
+        "title_updated",
+        {
+          old_length: oldTitle.length,
+          new_length: editedTitle.length
+        },
+        oldTitle,
+        editedTitle.trim()
+      );
+
       task.title = editedTitle.trim();
       setEditingTitle(false);
     } catch (error) {
@@ -490,6 +627,41 @@ useEffect(() => {
       alert("Failed to update title");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Function to format activity message
+  const getActivityMessage = (activity) => {
+    const action = activity.action;
+    const details = activity.details || {};
+    
+    switch(action) {
+      case "title_updated":
+        return "Title changed";
+      
+      case "description_updated":
+        return "Description updated";
+      
+      case "file_uploaded":
+        return `Uploaded file: ${details.file_name || 'File'}`;
+      
+      case "file_downloaded":
+        return `Downloaded file: ${details.file_name || 'File'}`;
+      
+      case "file_deleted":
+        return `Deleted file: ${details.file_name || 'File'}`;
+      
+      case "comment_added":
+        return "Added a comment";
+      
+      case "task_created":
+        return "Created this task";
+      
+      case "status_changed":
+        return `Status changed to ${activity.new_value}`;
+      
+      default:
+        return "Made changes";
     }
   };
 
@@ -611,6 +783,72 @@ useEffect(() => {
               </button>
             </div>
           )}
+
+          {/* Activity Log Section */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <FiActivity className="w-5 h-5" />
+              <span>Activity Log</span>
+              <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">
+                {activities.length}
+              </span>
+            </h3>
+            
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+              {activities.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-gray-500">No activity yet</p>
+                  <p className="text-sm text-gray-400 mt-1">Actions will appear here</p>
+                </div>
+              ) : (
+                activities.map((activity) => (
+                  <div key={activity.id} className="pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+                    <div className="flex gap-3">
+                      <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                        <span className="text-purple-600 text-sm font-medium">
+                          {(activity.user_name || "S").charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm text-gray-900 truncate">
+                              {activity.user_name || "System"}
+                            </span>
+                            {activity.user_id === currentUserId && (
+                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                                You
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500 whitespace-nowrap">
+                            <FiClock className="inline w-3 h-3 mr-1" />
+                            {format(new Date(activity.created_at), 'MMM d, h:mm a')}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700">
+                          {getActivityMessage(activity)}
+                        </p>
+                        {activity.old_value && activity.new_value && (
+                          <div className="mt-1 text-xs text-gray-500 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-red-600 line-through truncate max-w-xs">
+                                {activity.old_value}
+                              </span>
+                              <span>→</span>
+                              <span className="text-green-600 truncate max-w-xs">
+                                {activity.new_value}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
           {/* Comments Section - Moved to top */}
           <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -913,4 +1151,3 @@ useEffect(() => {
     </div>
   );
 }
-
