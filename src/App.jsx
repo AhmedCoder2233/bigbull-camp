@@ -15,6 +15,7 @@ import WorkspaceDetails from "./components/WorkspaceDetails";
 import Invites from "./Invites";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ResetPassword from "./ResetPassword";
 
 /* ================= PRIVATE ROUTE ================= */
 function PrivateRoute({ children }) {
@@ -419,6 +420,8 @@ export default function App() {
                   <Header />
                   
                   <Routes>
+
+                    <Route path="/reset-password" element={<ResetPassword />} />
                     {/* PUBLIC ROUTES */}
                     <Route path="/signin" element={<SignIn />} />
                     
