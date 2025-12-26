@@ -51,36 +51,46 @@ export function AuthProvider({ children }) {
       .single()
       .then(({ data }) => setProfile(data));
   }, [user]);
-
 /* ================= FORGOT PASSWORD ================= */
 const forgotPassword = async (email) => {
   try {
-    console.log("Sending reset email to:", email);
+    console.log("Checking if email exists in profiles:", email);
     
-    // IMPORTANT: Supabase requires a specific redirect URL format
-    // The redirect URL should include the authentication token
+    // ✅ STEP 1: PEHLE PROFILES TABLE SE EMAIL CHECK KAREIN
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, email")
+      .eq("email", email.trim()) // Saaf email se check karein
+      .maybeSingle(); // Agar record na mile toh error na de
+
+    if (profileError) {
+      console.error("Profile check error:", profileError);
+      throw new Error("System issue. Please try again.");
+    }
+
+    // ✅ STEP 2: AGAR PROFILES MAI EMAIL NAHI MILA
+    if (!profile) {
+      // Frontend ko success hi batayein, taake koi bata na sake ke kon sa email registered hai
+      return true;
+    }
+
+    
     const redirectUrl = `${window.location.origin}/reset-password`;
-    
-    console.log("Using redirect URL:", redirectUrl);
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl,
     });
 
     if (error) {
-      console.error("Reset password API error:", error);
-      
-      // Check specific error types
-      if (error.message.includes("rate limit") || error.message.includes("too many")) {
-        throw new Error("Too many attempts. Please try again in 60 seconds.");
-      } else if (error.message.includes("not found")) {
-        throw new Error("No account found with this email address.");
+      console.error("Reset link send error:", error);
+      if (error.message.includes("rate limit")) {
+        throw new Error("Too many attempts");
       } else {
-        throw new Error(`Failed to send reset email: ${error.message}`);
+        throw new Error(`Reset link Failure: ${error.message}`);
       }
     }
 
-    console.log("Reset email sent successfully");
+    console.log("Reset email successfully");
     return true;
 
   } catch (err) {
