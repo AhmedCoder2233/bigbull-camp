@@ -70,7 +70,6 @@ export default function Invites() {
         inviter: inviterData?.find((p) => p.id === invite.invited_by) || null,
       }));
 
-      console.log("📧 Merged invites:", merged);
       setInvites(merged);
       setLoading(false);
     };
@@ -245,4 +244,5 @@ export default function Invites() {
       </div>
     </div>
   );
+
 }
