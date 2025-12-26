@@ -521,7 +521,7 @@ export default function WorkspaceDetails() {
             {userWorkspaceRole && (
               <div className="px-4 py-2 rounded-lg font-medium bg-gradient-to-r from-red-500 to-red-600 text-white">
                 <span className="text-sm">
-                  {userWorkspaceRole === "admin" 
+                  Role: {userWorkspaceRole === "admin" 
                     ? "Administrator" 
                     : userWorkspaceRole === "client"
                     ? "Client"
