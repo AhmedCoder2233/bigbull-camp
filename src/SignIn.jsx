@@ -34,13 +34,8 @@ const handleSubmit = async (e) => {
   try {
     if (isForgotPassword) {
       // Forgot Password - Now with proper checking
-      const result = await forgotPassword(formData.email); // ✅ 'result' variable add karein
-
-         if (result === "EMAIL_NOT_FOUND") {
-        setSuccess("If this email exists, a reset link has been sent.");
-      } else {
-        setSuccess("📧 Password reset link has been sent to your email! Please check your inbox (and spam folder).");
-      }
+      await forgotPassword(formData.email);
+      setSuccess("📧 Password reset link has been sent to your email! Please check your inbox (and spam folder).");
       setFormData({ email: "", password: "", name: "" });
       
       setTimeout(() => {
