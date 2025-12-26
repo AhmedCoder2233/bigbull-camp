@@ -52,6 +52,58 @@ export function AuthProvider({ children }) {
       .then(({ data }) => setProfile(data));
   }, [user]);
 
+/* ================= FORGOT PASSWORD ================= */
+const forgotPassword = async (email) => {
+  try {
+    console.log("Sending reset email to:", email);
+    
+    // IMPORTANT: Supabase requires a specific redirect URL format
+    // The redirect URL should include the authentication token
+    const redirectUrl = `${window.location.origin}/reset-password`;
+    
+    console.log("Using redirect URL:", redirectUrl);
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
+
+    if (error) {
+      console.error("Reset password API error:", error);
+      
+      // Check specific error types
+      if (error.message.includes("rate limit") || error.message.includes("too many")) {
+        throw new Error("Too many attempts. Please try again in 60 seconds.");
+      } else if (error.message.includes("not found")) {
+        throw new Error("No account found with this email address.");
+      } else {
+        throw new Error(`Failed to send reset email: ${error.message}`);
+      }
+    }
+
+    console.log("Reset email sent successfully");
+    return true;
+
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    throw err;
+  }
+};
+  /* ================= RESET PASSWORD ================= */
+  const resetPassword = async (newPassword) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      return true;
+    } catch (err) {
+      console.error("Reset password error:", err);
+      throw err;
+    }
+  };
+
   /* ================= SIGN UP ================= */
   const signUp = async (email, password, name) => {
     try {
@@ -73,9 +125,9 @@ export function AuthProvider({ children }) {
         email,
         password,
         options: {
-          emailRedirectTo: 'https://www.bigbullcamp.com',
+          emailRedirectTo: `${window.location.origin}/auth`,
           data: {
-            name: name, // Store name in user metadata for trigger
+            name: name,
           },
         },
       });
@@ -89,7 +141,6 @@ export function AuthProvider({ children }) {
       // 👇 Profile will be created automatically by trigger after email verification
       
       // 👇 Step 3: Accept invites (optional)
-      // Note: This might fail if RPC doesn't exist, that's okay
       try {
         await supabase.rpc("accept_workspace_invites", {
           user_email: email,
@@ -132,10 +183,18 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, loading, signUp, signIn, logout }}
+      value={{ 
+        user, 
+        profile, 
+        loading, 
+        signUp, 
+        signIn, 
+        logout,
+        forgotPassword, // Use proper version
+        resetPassword 
+      }}
     >
       {children}
     </AuthContext.Provider>
   );
 }
-
