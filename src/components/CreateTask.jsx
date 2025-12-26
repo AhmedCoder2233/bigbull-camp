@@ -112,8 +112,6 @@ Due Date: ${dueDate ? new Date(dueDate).toLocaleDateString() : "Not set"}
       import.meta.env.VITE_TEMPLATE_ID,  // Your Template ID from EmailJS
       templateParams
     );
-
-    console.log('✅ Email sent successfully:', result);
     return { success: true };
 
   } catch (error) {
@@ -519,3 +517,4 @@ Due Date: ${dueDate ? new Date(dueDate).toLocaleDateString() : "Not set"}
     </div>
   );
 }
+
