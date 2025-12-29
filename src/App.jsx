@@ -16,12 +16,14 @@ import Invites from "./Invites";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ResetPassword from "./ResetPassword";
+import AboutUs from "./About";
+import Pricing from "./Pricing";
 
 /* ================= PRIVATE ROUTE ================= */
 function PrivateRoute({ children }) {
   const { user, loading } = useContext(AuthContext);
   if (loading) return null;
-  return user ? children : <Navigate to="/signin" />;
+  return user ? children : <Navigate to="/auth" />;
 }
 
 // Floating Particle Component
@@ -423,7 +425,7 @@ export default function App() {
 
                     <Route path="/reset-password" element={<ResetPassword />} />
                     {/* PUBLIC ROUTES */}
-                    <Route path="/signin" element={<SignIn />} />
+                    <Route path="/auth" element={<SignIn />} />
                     
                     {/* PRIVATE ROUTES */}
                     <Route
@@ -443,6 +445,22 @@ export default function App() {
                         </PrivateRoute>
                       }
                     />
+                    <Route
+                      path="/pricing"
+                      element={
+                        <PrivateRoute>
+                          <Pricing />
+                        </PrivateRoute>
+                      }
+                    />
+                    <Route
+                      path="/about"
+                      element={
+                        <PrivateRoute>
+                          <AboutUs />
+                        </PrivateRoute>
+                      }
+                    />
 
                     <Route
                       path="/workspace/:id"
@@ -456,11 +474,9 @@ export default function App() {
                     <Route
                       path="/*"
                       element={
-                        <PrivateRoute>
                           <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white w-full">
                             <Sidebar />
                           </div>
-                        </PrivateRoute>
                       }
                     />
                   </Routes>
