@@ -9,48 +9,77 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   /* ================= SESSION ================= */
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const u = data.session?.user;
+/* ================= SESSION ================= */
+useEffect(() => {
+  supabase.auth.getSession().then(({ data }) => {
+    const u = data.session?.user;
+    
+    if (u && !u.email_confirmed_at) {
+      setUser(null);
+    } else {
+      setUser(u ?? null);
+    }
+    
+    setLoading(false);
+  });
 
+  const { data: listener } = supabase.auth.onAuthStateChange(
+    async (_event, session) => {
+      const u = session?.user;
+      
+      if (u) {
+        const { data: userExists } = await supabase
+          .from("auth.users")
+          .select("id")
+          .eq("id", u.id)
+          .single()
+          .catch(() => ({ data: null }));
+        
+        if (!userExists) {
+          await supabase.auth.signOut();
+          setUser(null);
+          setProfile(null);
+          return;
+        }
+      }
+      
       if (u && !u.email_confirmed_at) {
         setUser(null);
       } else {
         setUser(u ?? null);
       }
-
-      setLoading(false);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        const u = session?.user;
-
-        if (u && !u.email_confirmed_at) {
-          setUser(null);
-        } else {
-          setUser(u ?? null);
-        }
-      }
-    );
-
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
-  /* ================= PROFILE ================= */
-  useEffect(() => {
-    if (!user) {
-      setProfile(null);
-      return;
     }
+  );
 
-    supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => setProfile(data));
-  }, [user]);
+  return () => listener.subscription.unsubscribe();
+}, []);
+  /* ================= PROFILE ================= */
+useEffect(() => {
+  if (!user) {
+    setProfile(null);
+    return;
+  }
+
+  supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single()
+    .then(({ data }) => {
+      if (!data) {
+        supabase.auth.signOut();
+        setUser(null);
+        setProfile(null);
+      } else {
+        setProfile(data);
+      }
+    })
+    .catch(() => {
+      supabase.auth.signOut();
+      setUser(null);
+      setProfile(null);
+    });
+}, [user]);
 /* ================= FORGOT PASSWORD ================= */
 const forgotPassword = async (email) => {
   try {
@@ -208,4 +237,3 @@ const forgotPassword = async (email) => {
     </AuthContext.Provider>
   );
 }
-
