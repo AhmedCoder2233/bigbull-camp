@@ -950,7 +950,7 @@ export default function LandingPage() {
               className="flex items-center gap-3 md:gap-4 group cursor-pointer"
               onClick={() => navigate("/")}
             >
-              <div className="w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-xl bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-xl bg-gradient-to-r flex items-center justify-center shadow-lg">
                 <img 
                   src="/logo.png" 
                   alt="BigBull CAMP Logo" 
@@ -1008,3 +1008,4 @@ export default function LandingPage() {
     </div>
   );
 }
+
