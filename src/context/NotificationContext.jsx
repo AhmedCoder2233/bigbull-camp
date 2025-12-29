@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { AuthContext } from './AuthContext';
@@ -29,8 +28,7 @@ const STAGES = [
 export const NotificationProvider = ({ children }) => {
   const { user } = useContext(AuthContext);
   const [notifications, setNotifications] = useState([]);
-  const [showToast, setShowToast] = useState(false);
-  const [currentNotification, setCurrentNotification] = useState(null);
+  const [toastQueue, setToastQueue] = useState([]);
   const [userWorkspaces, setUserWorkspaces] = useState({});
 
   // Get user's workspaces
@@ -115,17 +113,11 @@ export const NotificationProvider = ({ children }) => {
                   toStage
                 };
 
-                // Add to list
+                // Add to notification list
                 setNotifications(prev => [notification, ...prev.slice(0, 19)]);
 
-                // Show toast
-                setCurrentNotification(notification);
-                setShowToast(true);
-
-                // Auto-hide after 5 seconds
-                setTimeout(() => {
-                  setShowToast(false);
-                }, 5000);
+                // Add to toast queue
+                setToastQueue(prev => [...prev, notification]);
               }
             } catch (error) {
               console.error('Error processing notification:', error);
@@ -145,12 +137,27 @@ export const NotificationProvider = ({ children }) => {
     };
   }, [user?.id, userWorkspaces]);
 
+  // ✅ Auto-dismiss toasts after 5 seconds
+  useEffect(() => {
+    if (toastQueue.length === 0) return;
+
+    const timers = toastQueue.map((toast, index) => {
+      return setTimeout(() => {
+        setToastQueue(prev => prev.filter(t => t.id !== toast.id));
+      }, 5000 + (index * 100));
+    });
+
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+    };
+  }, [toastQueue]);
+
   const clearNotifications = () => {
     setNotifications([]);
   };
 
-  const dismissToast = () => {
-    setShowToast(false);
+  const dismissToast = (id) => {
+    setToastQueue(prev => prev.filter(t => t.id !== id));
   };
 
   const removeNotification = (id) => {
@@ -163,98 +170,105 @@ export const NotificationProvider = ({ children }) => {
         notifications, 
         clearNotifications,
         removeNotification,
-        showToast,
-        currentNotification,
+        toastQueue,
         dismissToast
       }}
     >
       {children}
       
-      {/* 🎨 Enhanced Global Toast Notification */}
-      {showToast && currentNotification && (
-        <div className="fixed top-6 right-6 z-[9999] animate-slideIn">
-          <div className="relative group">
-            {/* Glow Effect */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl blur-lg opacity-30 group-hover:opacity-50 transition duration-300"></div>
-            
-            {/* Main Card */}
-            <div className="relative bg-white rounded-2xl shadow-2xl border border-red-100 overflow-hidden max-w-md">
-              {/* Animated Background Pattern */}
-              <div className="absolute inset-0 opacity-5">
-                <div className="absolute inset-0" style={{
-                  backgroundImage: 'radial-gradient(circle at 2px 2px, rgb(239, 68, 68) 1px, transparent 0)',
-                  backgroundSize: '24px 24px'
-                }}></div>
-              </div>
-
-              {/* Top Accent Bar */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-400 via-red-500 to-red-600"></div>
-
-              {/* Content */}
-              <div className="relative p-5">
-                <div className="flex items-start gap-4">
-                  {/* Icon with Animation */}
-                  <div className="relative flex-shrink-0">
-                    <div className="absolute inset-0 bg-red-500 rounded-xl blur-md opacity-40 animate-pulse"></div>
-                    <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg">
-                      <span className="text-xl">📋</span>
-                    </div>
-                  </div>
-
-                  {/* Text Content */}
-                  <div className="flex-1 min-w-0 pt-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-bold text-gray-900 text-base">{currentNotification.title}</h4>
-                      <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded-full">New</span>
-                    </div>
-                    
-                    <p className="text-sm text-gray-700 mb-3 leading-relaxed break-words">
-                      {currentNotification.message}
-                    </p>
-
-                    {/* Stage Transition Visual */}
-                    <div className="flex items-center gap-2 mb-3 bg-red-50/50 rounded-lg p-2 border border-red-100">
-                      <span className="text-xs font-medium text-red-700 bg-white px-2 py-1 rounded shadow-sm">
-                        {currentNotification.fromStage}
-                      </span>
-                      <FiArrowRight className="w-3 h-3 text-red-500" />
-                      <span className="text-xs font-medium text-red-700 bg-white px-2 py-1 rounded shadow-sm">
-                        {currentNotification.toStage}
-                      </span>
-                    </div>
-
-                    {/* Footer Info */}
-                    <div className="flex items-center gap-3 text-xs">
-                      <div className="flex items-center gap-1.5 text-red-600 font-medium">
-                        <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
-                        {currentNotification.workspace}
-                      </div>
-                      <span className="text-gray-400">•</span>
-                      <div className="flex items-center gap-1 text-gray-500">
-                        <FiClock className="w-3 h-3" />
-                        {currentNotification.time}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Close Button */}
-                  <button 
-                    onClick={dismissToast}
-                    className="flex-shrink-0 w-8 h-8 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-all duration-200 flex items-center justify-center group/btn"
-                  >
-                    <FiX className="w-4 h-4 group-hover/btn:rotate-90 transition-transform duration-200" />
-                  </button>
+      {/* 🎨 Enhanced Global Toast Notifications - STACKED */}
+      <div className="fixed top-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none">
+        {toastQueue.map((notification, index) => (
+          <div 
+            key={notification.id}
+            className="animate-slideIn pointer-events-auto"
+            style={{
+              animationDelay: `${index * 100}ms`
+            }}
+          >
+            <div className="relative group">
+              {/* Glow Effect */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl blur-lg opacity-30 group-hover:opacity-50 transition duration-300"></div>
+              
+              {/* Main Card */}
+              <div className="relative bg-white rounded-2xl shadow-2xl border border-red-100 overflow-hidden max-w-md">
+                {/* Animated Background Pattern */}
+                <div className="absolute inset-0 opacity-5">
+                  <div className="absolute inset-0" style={{
+                    backgroundImage: 'radial-gradient(circle at 2px 2px, rgb(239, 68, 68) 1px, transparent 0)',
+                    backgroundSize: '24px 24px'
+                  }}></div>
                 </div>
-              </div>
 
-              {/* Progress Bar */}
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-red-100">
-                <div className="h-full bg-gradient-to-r from-red-500 via-red-600 to-red-500 animate-progress origin-left"></div>
+                {/* Top Accent Bar */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-400 via-red-500 to-red-600"></div>
+
+                {/* Content */}
+                <div className="relative p-5">
+                  <div className="flex items-start gap-4">
+                    {/* Icon with Animation */}
+                    <div className="relative flex-shrink-0">
+                      <div className="absolute inset-0 bg-red-500 rounded-xl blur-md opacity-40 animate-pulse"></div>
+                      <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg">
+                        <span className="text-xl">📋</span>
+                      </div>
+                    </div>
+
+                    {/* Text Content */}
+                    <div className="flex-1 min-w-0 pt-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-bold text-gray-900 text-base">{notification.title}</h4>
+                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded-full">New</span>
+                      </div>
+                      
+                      <p className="text-sm text-gray-700 mb-3 leading-relaxed break-words">
+                        {notification.message}
+                      </p>
+
+                      {/* Stage Transition Visual */}
+                      <div className="flex items-center gap-2 mb-3 bg-red-50/50 rounded-lg p-2 border border-red-100">
+                        <span className="text-xs font-medium text-red-700 bg-white px-2 py-1 rounded shadow-sm">
+                          {notification.fromStage}
+                        </span>
+                        <FiArrowRight className="w-3 h-3 text-red-500" />
+                        <span className="text-xs font-medium text-red-700 bg-white px-2 py-1 rounded shadow-sm">
+                          {notification.toStage}
+                        </span>
+                      </div>
+
+                      {/* Footer Info */}
+                      <div className="flex items-center gap-3 text-xs">
+                        <div className="flex items-center gap-1.5 text-red-600 font-medium">
+                          <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
+                          {notification.workspace}
+                        </div>
+                        <span className="text-gray-400">•</span>
+                        <div className="flex items-center gap-1 text-gray-500">
+                          <FiClock className="w-3 h-3" />
+                          {notification.time}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Close Button */}
+                    <button 
+                      onClick={() => dismissToast(notification.id)}
+                      className="flex-shrink-0 w-8 h-8 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-all duration-200 flex items-center justify-center group/btn"
+                    >
+                      <FiX className="w-4 h-4 group-hover/btn:rotate-90 transition-transform duration-200" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-red-100">
+                  <div className="h-full bg-gradient-to-r from-red-500 via-red-600 to-red-500 animate-progress origin-left"></div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </NotificationContext.Provider>
   );
 };
