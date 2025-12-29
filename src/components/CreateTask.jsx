@@ -9,14 +9,17 @@ import {
   FiUpload,
   FiFile,
   FiCheckCircle,
-  FiMail
+  FiMail,
+  FiClock
 } from "react-icons/fi";
 import emailjs from '@emailjs/browser'; 
+
 export default function CreateTask({ workspaceId, onTaskCreated }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [dueTime, setDueTime] = useState("");
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [attachments, setAttachments] = useState([]);
@@ -24,7 +27,7 @@ export default function CreateTask({ workspaceId, onTaskCreated }) {
   const [successMessage, setSuccessMessage] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
-  const [userId, setUserId] = useState(null); // ✅ Add this
+  const [userId, setUserId] = useState(null);
 
   emailjs.init(import.meta.env.VITE_EMAIL_API);
 
@@ -90,26 +93,51 @@ export default function CreateTask({ workspaceId, onTaskCreated }) {
   }, [workspaceId]);
 
   // Email send function using Web3Forms
-const sendTaskEmail = async (toEmail, toName) => {
+const sendTaskEmail = async (toEmail, toName, pktDueDate = null) => {
   try {
+    // Format date in Pakistani timezone for email
+    const formatPKTDateTime = (dateString) => {
+      if (!dateString) return "Not set";
+      
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleString('en-US', {
+          timeZone: 'Asia/Karachi',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        }) + ' (PKT)';
+      } catch (error) {
+        return "Invalid date";
+      }
+    };
+
+    // Use the PKT date passed from createTask
+    const formattedDate = pktDueDate ? 
+      formatPKTDateTime(pktDueDate) : 
+      "Not set";
+
     // Prepare the data that matches your EmailJS template variables
     const templateParams = {
       to_name: toName,
       to_email: toEmail,
-    message: `
+      message: `
 You have a new task assigned.
 
 Workspace: ${workspaceName}
 Task Title: ${title}
 Task Description: ${description || "No description provided"}
-Due Date: ${dueDate ? new Date(dueDate).toLocaleDateString() : "Not set"}
-  `
+Due Date: ${formattedDate}
+`
     };
 
     // Send the email
     const result = await emailjs.send(
-      import.meta.env.VITE_SERVICE_ID,   // Your Service ID from EmailJS
-      import.meta.env.VITE_TEMPLATE_ID,  // Your Template ID from EmailJS
+      import.meta.env.VITE_SERVICE_ID,
+      import.meta.env.VITE_TEMPLATE_ID,
       templateParams
     );
     return { success: true };
@@ -160,141 +188,150 @@ Due Date: ${dueDate ? new Date(dueDate).toLocaleDateString() : "Not set"}
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
-  const createTask = async (e) => {
-    e.preventDefault();
-    if (!title.trim()) {
-      setSuccessMessage("Please enter a task title");
-      setTimeout(() => setSuccessMessage(""), 3000);
-      return;
+const createTask = async (e) => {
+  e.preventDefault();
+  if (!title.trim()) {
+    setSuccessMessage("Please enter a task title");
+    setTimeout(() => setSuccessMessage(""), 3000);
+    return;
+  }
+
+  setLoading(true);
+  try {
+    // Function to convert local date/time to Pakistan timezone ISO string
+    const getPKTDateTimeISO = (dateStr, timeStr) => {
+      if (!dateStr) return null;
+      
+      if (!timeStr) {
+        // If no time provided, set to 23:59:59 PKT
+        timeStr = "23:59:59";
+      } else if (timeStr.length === 5) {
+        // If time is in HH:MM format, add seconds
+        timeStr = `${timeStr}:00`;
+      }
+      
+      // Create date string in PKT timezone (UTC+5)
+      const pktDateTimeString = `${dateStr}T${timeStr}+05:00`;
+      
+      try {
+        // Parse as PKT timezone
+        const date = new Date(pktDateTimeString);
+        
+        if (isNaN(date.getTime())) {
+          console.warn("Invalid date, using fallback");
+          // Fallback: use local date and adjust for PKT (UTC+5)
+          const localDate = new Date(`${dateStr}T${timeStr}`);
+          const pktDate = new Date(localDate.getTime() + (5 * 60 * 60 * 1000));
+          return pktDate.toISOString();
+        }
+        
+        return date.toISOString();
+      } catch (error) {
+        console.error("Date parsing error:", error);
+        // Fallback to simple date without timezone
+        return `${dateStr}T${timeStr}`;
+      }
+    };
+
+    // Get due date in Pakistan timezone
+    const pktDueDate = getPKTDateTimeISO(dueDate, dueTime);
+
+    // Create task
+    const taskData = {
+      workspace_id: workspaceId,
+      title: title.trim(),
+      description: description.trim() || null,
+      status: "planning",
+      assigned_to: assignedTo || null,
+      created_by: userId,
+      due_date: pktDueDate,
+    };
+
+    const { data: task, error: taskError } = await supabase
+      .from("tasks")
+      .insert(taskData)
+      .select()
+      .single();
+
+    if (taskError) throw taskError;
+
+    // Upload attachments
+    if (attachments.length > 0) {
+      const attachmentsData = attachments.map(attachment => ({
+        task_id: task.id,
+        file_name: attachment.name,
+        file_path: attachment.path,
+        file_size: attachment.size,
+        file_type: attachment.type,
+        uploaded_by: userId,
+      }));
+
+      await supabase.from("task_attachments").insert(attachmentsData);
     }
 
-    setLoading(true);
-    try {
-      // Create task
-      const taskData = {
-        workspace_id: workspaceId,
-        title: title.trim(),
-        description: description.trim() || null,
-        status: "planning",
-        assigned_to: assignedTo || null,
-        created_by: userId,
-        due_date: dueDate || null,
-      };
-
-      const { data: task, error: taskError } = await supabase
-        .from("tasks")
-        .insert(taskData)
-        .select()
-        .single();
-
-      if (taskError) throw taskError;
-
-      // Upload attachments
-      if (attachments.length > 0) {
-        const attachmentsData = attachments.map(attachment => ({
-          task_id: task.id,
-          file_name: attachment.name,
-          file_path: attachment.path,
-          file_size: attachment.size,
-          file_type: attachment.type,
-          uploaded_by: userId,
-        }));
-
-        await supabase.from("task_attachments").insert(attachmentsData);
-      }
-
-      // Send email
-      let emailSent = false;
-      let assignedUserName = "";
-      
-      if (assignedTo && sendEmail) {
-        const assignedUser = members.find(m => m.user_id === assignedTo);
-        if (assignedUser?.profiles?.email) {
-          try {
-            const emailResult = await sendTaskEmail(
+    // Send email - Update email to show PKT time
+    let emailSent = false;
+    let assignedUserName = "";
+    
+    if (assignedTo && sendEmail) {
+      const assignedUser = members.find(m => m.user_id === assignedTo);
+      if (assignedUser?.profiles?.email) {
+        try {
+          const emailResult = await sendTaskEmail(
+            assignedUser.profiles.email,
+            assignedUser.profiles.name,
+            pktDueDate // Pass PKT date to email function
+          );
+          
+          emailSent = emailResult.success;
+          assignedUserName = assignedUser.profiles.name;
+          
+          if (!emailSent) {
+            console.log("Trying alternative email method...");
+            // Fallback to Formspree
+            await sendEmailViaFormspree(
               assignedUser.profiles.email,
-              assignedUser.profiles.name
+              assignedUser.profiles.name,
+              pktDueDate // Pass PKT date to formspree
             );
-            
-            emailSent = emailResult.success;
-            assignedUserName = assignedUser.profiles.name;
-            
-            if (!emailSent) {
-              console.log("Trying alternative email method...");
-              // Fallback to Formspree
-              await sendEmailViaFormspree(
-                assignedUser.profiles.email,
-                assignedUser.profiles.name
-              );
-              emailSent = true;
-            }
-          } catch (emailError) {
-            console.error("Failed to send email:", emailError);
+            emailSent = true;
           }
+        } catch (emailError) {
+          console.error("Failed to send email:", emailError);
         }
       }
-
-      // Reset form
-      setTitle("");
-      setDescription("");
-      setAssignedTo("");
-      setDueDate("");
-      setAttachments([]);
-
-      // Success message
-      let successMsg = `✓ Task "${task.title}" created successfully!`;
-      if (emailSent) {
-        successMsg += ` Email sent to ${assignedUserName}.`;
-      } else if (assignedTo && sendEmail) {
-        successMsg += ` (Email could not be sent)`;
-      }
-      setSuccessMessage(successMsg);
-      
-      // Notify parent
-      if (onTaskCreated) onTaskCreated(task);
-
-      setTimeout(() => setSuccessMessage(""), 5000);
-
-    } catch (error) {
-      console.error("Error creating task:", error);
-      setSuccessMessage(`✗ Failed to create task: ${error.message}`);
-      setTimeout(() => setSuccessMessage(""), 3000);
-    } finally {
-      setLoading(false);
     }
-  };
 
-  // Alternative: Formspree (fallback)
-  const sendEmailViaFormspree = async (toEmail, toName) => {
-    try {
-      const response = await fetch("https://formspree.io/f/YOUR_FORMSPREE_FORM_ID", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          _replyto: toEmail,
-          _subject: `New Task: ${title}`,
-          message: `
-            New task assigned to ${toName}
-            
-            Task: ${title}
-            Description: ${description || "No description"}
-            Due Date: ${dueDate || "Not specified"}
-            Workspace: ${workspaceName}
-            
-            Please check your task dashboard for details.
-          `,
-        }),
-      });
+    // Reset form
+    setTitle("");
+    setDescription("");
+    setAssignedTo("");
+    setDueDate("");
+    setDueTime("");
+    setAttachments([]);
 
-      return response.ok;
-    } catch (error) {
-      console.error("Formspree error:", error);
-      return false;
+    // Success message
+    let successMsg = `✓ Task "${task.title}" created successfully!`;
+    if (emailSent) {
+      successMsg += ` Email sent to ${assignedUserName}.`;
+    } else if (assignedTo && sendEmail) {
+      successMsg += ` (Email could not be sent)`;
     }
-  };
+    setSuccessMessage(successMsg);
+    
+    // Notify parent
+    if (onTaskCreated) onTaskCreated(task);
 
+    setTimeout(() => setSuccessMessage(""), 5000);
+
+  } catch (error) {
+    console.error("Error creating task:", error);
+    setSuccessMessage(`✗ Failed to create task: ${error.message}`);
+    setTimeout(() => setSuccessMessage(""), 3000);
+  } finally {
+    setLoading(false);
+  }
+};
   // Get assigned user info
   const getAssignedUserInfo = () => {
     if (!assignedTo) return null;
@@ -389,19 +426,30 @@ Due Date: ${dueDate ? new Date(dueDate).toLocaleDateString() : "Not set"}
             </select>
           </div>
 
-          {/* Due Date */}
+          {/* Due Date & Time */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
               <FiCalendar className="w-4 h-4" />
-              Due Date (Optional)
+              Due Date & Time (Optional)
             </label>
-            <input
-              type="date"
-              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 focus:outline-none transition-colors"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
-            />
+            <div className="flex gap-2">
+              <input
+                type="date"
+                className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 focus:outline-none transition-colors"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+              />
+              <div className="relative w-32">
+                <input
+                  type="time"
+                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 focus:outline-none transition-colors"
+                  value={dueTime}
+                  onChange={(e) => setDueTime(e.target.value)}
+                />
+                <FiClock className="absolute right-3 top-3.5 w-4 h-4 text-gray-400" />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -517,4 +565,3 @@ Due Date: ${dueDate ? new Date(dueDate).toLocaleDateString() : "Not set"}
     </div>
   );
 }
-
