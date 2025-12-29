@@ -1056,20 +1056,41 @@ useEffect(() => {
   )}
 </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <div className="flex items-center gap-2 text-gray-600 mb-2">
-                <FiCalendar className="w-4 h-4" />
-                <span className="text-sm font-medium">Due Date</span>
-              </div>
-              <p className="font-semibold text-gray-900">
-                {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy') : (
-                  <span className="text-gray-400">No due date</span>
-                )}
-              </p>
-              {task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed' && (
-                <p className="text-xs text-red-600 mt-1">Overdue</p>
-              )}
-            </div>
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+  <div className="flex items-center gap-2 text-gray-600 mb-2">
+    <FiCalendar className="w-4 h-4" />
+    <span className="text-sm font-medium">Due Date & Time</span>
+  </div>
+  <p className="font-semibold text-gray-900">
+    {task.due_date ? (
+      <span>
+        {new Date(task.due_date).toLocaleString('en-US', {
+          timeZone: 'Asia/Karachi', // Pakistani timezone
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        })}
+        <span className="text-xs text-gray-500 ml-2">(PKT)</span>
+      </span>
+    ) : (
+      <span className="text-gray-400">No due date</span>
+    )}
+  </p>
+  {task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed' && (
+    <p className="text-xs text-red-600 mt-1">Overdue</p>
+  )}
+  {task.due_date && new Date(task.due_date) > new Date() && (
+    <p className="text-xs text-gray-500 mt-1">
+      {new Date(task.due_date).toLocaleDateString('en-US', {
+        timeZone: 'Asia/Karachi',
+        weekday: 'long'
+      })}
+    </p>
+  )}
+</div>
           </div>
 
           {/* Attachments Section */}
