@@ -24,67 +24,53 @@ export default function ResetPassword() {
     const checkResetSession = async () => {
       setIsChecking(true);
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // IMPORTANT: Check URL hash first - must have recovery tokens
+        const hash = window.location.hash;
+        console.log("URL Hash:", hash);
         
-        if (sessionError) {
-          console.error("Session error:", sessionError);
-          setError("Invalid reset link. Please request a new password reset email.");
+        // ❌ If NO hash with type=recovery, reject immediately
+        if (!hash || !hash.includes("type=recovery")) {
+          console.log("No valid recovery link in URL - blocking access");
+          setError("Invalid access. Please use the reset link from your email.");
           setIsValidSession(false);
+          setIsChecking(false);
           return;
         }
-
-        if (session) {
-          const hash = window.location.hash;
-          console.log("URL Hash:", hash);
-          
-          if (hash && hash.includes("type=recovery")) {
-            console.log("Valid recovery link detected");
-            setIsValidSession(true);
-            
-            const { error: urlError } = await supabase.auth.setSession({
-              access_token: new URLSearchParams(hash.substring(1)).get('access_token'),
-              refresh_token: new URLSearchParams(hash.substring(1)).get('refresh_token'),
-            });
-            
-            if (urlError) {
-              console.error("Set session error:", urlError);
-            }
-          } else {
-            const user = session.user;
-            console.log("User from session:", user);
-            setIsValidSession(true);
-          }
-        } else {
-          const hash = window.location.hash;
-          if (hash && hash.includes("type=recovery")) {
-            console.log("Setting session from URL hash");
-            
-            const params = new URLSearchParams(hash.substring(1));
-            const access_token = params.get('access_token');
-            const refresh_token = params.get('refresh_token');
-            
-            if (access_token && refresh_token) {
-              const { error: setError } = await supabase.auth.setSession({
-                access_token,
-                refresh_token,
-              });
-              
-              if (setError) {
-                console.error("Error setting session:", setError);
-                setError("Invalid or expired reset link. Please request a new one.");
-              } else {
-                setIsValidSession(true);
-              }
-            } else {
-              setError("Invalid reset link. Missing authentication tokens.");
-            }
-          } else {
-            setError("No valid reset session found. Please request a new password reset email.");
-          }
+        
+        // ✅ Extract tokens from URL
+        const params = new URLSearchParams(hash.substring(1));
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+        const type = params.get('type');
+        
+        // Validate all required tokens exist
+        if (!access_token || !refresh_token || type !== 'recovery') {
+          console.log("Missing or invalid recovery tokens");
+          setError("Invalid reset link. Please request a new password reset email.");
+          setIsValidSession(false);
+          setIsChecking(false);
+          return;
         }
+        
+        // Try to set the session from URL tokens
+        const { data, error: setError } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+        
+        if (setError || !data.session) {
+          console.error("Error setting session:", setError);
+          setError("Invalid or expired reset link. Please request a new one.");
+          setIsValidSession(false);
+        } else {
+          console.log("Valid recovery session established");
+          setIsValidSession(true);
+        }
+        
       } catch (err) {
         console.error("Check session error:", err);
         setError("Unable to verify reset link. Please request a new one.");
+        setIsValidSession(false);
       } finally {
         setIsChecking(false);
       }
