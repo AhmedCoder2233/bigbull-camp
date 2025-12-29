@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useContext } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 
 import Header from "./components/Header";
 import Sidebar from "./components/LandingPage";
@@ -18,12 +18,74 @@ import 'react-toastify/dist/ReactToastify.css';
 import ResetPassword from "./ResetPassword";
 import AboutUs from "./About";
 import Pricing from "./Pricing";
+import Contact from "./Contact";
 
 /* ================= PRIVATE ROUTE ================= */
 function PrivateRoute({ children }) {
   const { user, loading } = useContext(AuthContext);
   if (loading) return null;
   return user ? children : <Navigate to="/auth" />;
+}
+
+/* ================= PROTECTED RESET PASSWORD ROUTE ================= */
+function ProtectedResetPassword() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [isValid, setIsValid] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    // Check if URL has valid recovery hash
+    const hash = location.hash;
+    
+    if (!hash || !hash.includes("type=recovery")) {
+      // Invalid access - redirect to auth
+      console.log("Invalid reset password access - redirecting to auth");
+      setIsValid(false);
+      setChecking(false);
+      
+      // Redirect after short delay
+      setTimeout(() => {
+        navigate("/auth", { replace: true });
+      }, 100);
+      return;
+    }
+    
+    // Valid recovery link
+    setIsValid(true);
+    setChecking(false);
+  }, [location, navigate]);
+
+  // Show loading while checking
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-red-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Verifying access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If invalid, show brief message before redirect
+  if (!isValid) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-red-50">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <p className="text-gray-600">Invalid access. Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Valid access - render ResetPassword
+  return <ResetPassword />;
 }
 
 // Floating Particle Component
@@ -422,10 +484,14 @@ export default function App() {
                   <Header />
                   
                   <Routes>
-
-                    <Route path="/reset-password" element={<ResetPassword />} />
+                    {/* PROTECTED RESET PASSWORD ROUTE */}
+                    <Route path="/reset-password" element={<ProtectedResetPassword />} />
+                    
                     {/* PUBLIC ROUTES */}
                     <Route path="/auth" element={<SignIn />} />
+                    <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/about" element={<AboutUs />} />
                     
                     {/* PRIVATE ROUTES */}
                     <Route
@@ -442,22 +508,6 @@ export default function App() {
                       element={
                         <PrivateRoute>
                           <Invites />
-                        </PrivateRoute>
-                      }
-                    />
-                    <Route
-                      path="/pricing"
-                      element={
-                        <PrivateRoute>
-                          <Pricing />
-                        </PrivateRoute>
-                      }
-                    />
-                    <Route
-                      path="/about"
-                      element={
-                        <PrivateRoute>
-                          <AboutUs />
                         </PrivateRoute>
                       }
                     />
