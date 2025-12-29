@@ -10,46 +10,22 @@ export function AuthProvider({ children }) {
 
   /* ================= SESSION ================= */
   useEffect(() => {
-    // Session check on reload
     supabase.auth.getSession().then(({ data }) => {
       const u = data.session?.user;
+
       if (u && !u.email_confirmed_at) {
         setUser(null);
       } else {
         setUser(u ?? null);
       }
+
       setLoading(false);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         const u = session?.user;
-        
-        // Check if user exists in auth table
-        if (u) {
-          try {
-            const { data: userExists } = await supabase
-              .from("auth.users")
-              .select("id")
-              .eq("id", u.id)
-              .single();
-            
-            if (!userExists) {
-              await supabase.auth.signOut();
-              setUser(null);
-              setProfile(null);
-              return;
-            }
-          } catch (error) {
-            // If error, user doesn't exist or query failed
-            await supabase.auth.signOut();
-            setUser(null);
-            setProfile(null);
-            return;
-          }
-        }
-        
-        // Normal email confirmation check
+
         if (u && !u.email_confirmed_at) {
           setUser(null);
         } else {
@@ -68,77 +44,25 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    const checkProfile = async () => {
-      try {
-        const { data } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-
-        if (!data) {
-          // Profile doesn't exist, logout user
-          await supabase.auth.signOut();
+    // Profile fetch karo aur check karo ke exist karta hai ya nahi
+    supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single()
+      .then(({ data, error }) => {
+        // ✅ Agar profile nahi mila (deleted ho gaya) toh logout kar do
+        if (error || !data) {
+          console.log("Profile not found - logging out user");
+          supabase.auth.signOut();
           setUser(null);
           setProfile(null);
-        } else {
-          setProfile(data);
+          return;
         }
-      } catch (error) {
-        // Error means profile doesn't exist or query failed
-        await supabase.auth.signOut();
-        setUser(null);
-        setProfile(null);
-      }
-    };
-
-    checkProfile();
+        
+        setProfile(data);
+      });
   }, [user]);
-
-  /* ================= CHECK USER ON EVERY RELOAD ================= */
-  // Extra safety check on every page reload
-  useEffect(() => {
-    const checkUserOnReload = async () => {
-      if (!user) return;
-      
-      try {
-        // Method 1: Check in auth.users (if you have access)
-        const { data: authUser } = await supabase
-          .from("auth.users")
-          .select("id")
-          .eq("id", user.id)
-          .single();
-          
-        if (!authUser) {
-          await supabase.auth.signOut();
-          setUser(null);
-          setProfile(null);
-        }
-      } catch (error) {
-        // If auth.users not accessible, check profiles
-        try {
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("id", user.id)
-            .single();
-            
-          if (!profileData) {
-            await supabase.auth.signOut();
-            setUser(null);
-            setProfile(null);
-          }
-        } catch (profileError) {
-          // If both fail, logout
-          await supabase.auth.signOut();
-          setUser(null);
-          setProfile(null);
-        }
-      }
-    };
-    
-    checkUserOnReload();
-  }, []); // Empty dependency = runs on mount/reload
 
   /* ================= FORGOT PASSWORD ================= */
   const forgotPassword = async (email) => {
@@ -159,7 +83,7 @@ export function AuthProvider({ children }) {
       if (!profile) {
         return true;
       }
-      
+
       const redirectUrl = `${window.location.origin}/reset-password`;
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -231,7 +155,7 @@ export function AuthProvider({ children }) {
       if (!data?.user) {
         throw new Error("Failed to create user account");
       }
-      
+
       try {
         await supabase.rpc("accept_workspace_invites", {
           user_email: email,
