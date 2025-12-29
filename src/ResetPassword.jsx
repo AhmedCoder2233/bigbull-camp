@@ -24,43 +24,51 @@ export default function ResetPassword() {
     const checkResetSession = async () => {
       setIsChecking(true);
       try {
-        // Get hash from URL
+        // IMPORTANT: Check URL hash first - must have recovery tokens
         const hash = window.location.hash;
         console.log("URL Hash:", hash);
         
-        // Parse tokens from URL
+        // ❌ If NO hash with type=recovery, reject immediately
+        if (!hash || !hash.includes("type=recovery")) {
+          console.log("No valid recovery link in URL - blocking access");
+          setError("Invalid access. Please use the reset link from your email.");
+          setIsValidSession(false);
+          setIsChecking(false);
+          return;
+        }
+        
+        // ✅ Extract tokens from URL
         const params = new URLSearchParams(hash.substring(1));
         const access_token = params.get('access_token');
         const refresh_token = params.get('refresh_token');
+        const type = params.get('type');
         
-        console.log("Tokens found:", { 
-          hasAccessToken: !!access_token, 
-          hasRefreshToken: !!refresh_token
+        // Validate all required tokens exist
+        if (!access_token || !refresh_token || type !== 'recovery') {
+          console.log("Missing or invalid recovery tokens");
+          setError("Invalid reset link. Please request a new password reset email.");
+          setIsValidSession(false);
+          setIsChecking(false);
+          return;
+        }
+        
+        // Try to set the session from URL tokens
+        const { data, error: setError } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
         });
         
-        // Set session from URL tokens
-        if (access_token && refresh_token) {
-          const { error: setError } = await supabase.auth.setSession({
-            access_token,
-            refresh_token,
-          });
-          
-          if (setError) {
-            console.error("Error setting session:", setError);
-            setError("Invalid or expired reset link. Please request a new one.");
-            setIsValidSession(false);
-          } else {
-            console.log("✅ Session set successfully");
-            setIsValidSession(true);
-          }
-        } else {
-          console.log("No tokens found in URL");
-          setError("Invalid reset link. Please use the link from your email.");
+        if (setError || !data.session) {
+          console.error("Error setting session:", setError);
+          setError("Invalid or expired reset link. Please request a new one.");
           setIsValidSession(false);
+        } else {
+          console.log("Valid recovery session established");
+          setIsValidSession(true);
         }
         
       } catch (err) {
-        console.error("Error:", err);
+        console.error("Check session error:", err);
         setError("Unable to verify reset link. Please request a new one.");
         setIsValidSession(false);
       } finally {
@@ -102,13 +110,12 @@ export default function ResetPassword() {
 
       setSuccess("✅ Password reset successfully! Redirecting to login...");
       
-      // Clear the hash from URL
       window.history.replaceState(null, "", window.location.pathname);
       
       setTimeout(() => {
         supabase.auth.signOut();
         navigate("/auth");
-      }, 2000);
+      }, 3000);
     } catch (err) {
       console.error("Reset password error:", err);
       setError(err.message || "Failed to reset password. Please try again.");
@@ -141,16 +148,16 @@ export default function ResetPassword() {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Invalid Reset Link</h2>
             <p className="text-gray-600 mb-6">{error || "This reset link is invalid or has expired."}</p>
             <button
-              onClick={() => navigate("/auth?mode=forgot")}
+              onClick={() => navigate("/auth")}
               className="w-full py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition"
             >
-              Request New Reset Email
+              Go to Login
             </button>
             <button
-              onClick={() => navigate("/auth")}
+              onClick={() => navigate("/auth?mode=forgot")}
               className="w-full mt-4 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition"
             >
-              Go to Login
+              Request New Reset Email
             </button>
           </div>
         </div>
