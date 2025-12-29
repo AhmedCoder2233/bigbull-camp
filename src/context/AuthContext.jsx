@@ -135,7 +135,7 @@ const forgotPassword = async (email) => {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth`,
+          emailRedirectTo: `${window.location.origin}`,
           data: {
             name: name,
           },
@@ -208,3 +208,4 @@ const forgotPassword = async (email) => {
     </AuthContext.Provider>
   );
 }
+
