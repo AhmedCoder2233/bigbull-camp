@@ -304,7 +304,7 @@ export default function LandingPage() {
 
      
       {/* Hero Section with Splash Background Image */}
-      <section className="relative pt-20 md:pt-0 md:py-20 lg:py-28 px-4 sm:px-6 lg:px-8 min-h-screen md:min-h-[90vh] flex items-center overflow-hidden">
+      <section className="relative pt-20 pb-20 md:pt-0 md:py-20 lg:py-28 px-4 sm:px-6 lg:px-8 min-h-screen md:min-h-[90vh] flex items-center overflow-hidden">
         {/* Background Image - Professional Project Management */}
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
