@@ -983,7 +983,7 @@ export default function LandingPage() {
               </motion.button>
               <motion.button 
                 whileHover={{ scale: 1.05, color: "#dc2626" }}
-                onClick={() => navigate(user ? "/workspaces" : "/signup")}
+                onClick={() => navigate("/pricing")}
                 className="text-gray-600 hover:text-red-600 font-medium text-sm md:text-base transition-colors"
               >
                 Pricing
@@ -1008,4 +1008,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
 
