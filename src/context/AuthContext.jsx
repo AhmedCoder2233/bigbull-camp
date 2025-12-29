@@ -9,124 +9,181 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   /* ================= SESSION ================= */
-/* ================= SESSION ================= */
-useEffect(() => {
-  supabase.auth.getSession().then(({ data }) => {
-    const u = data.session?.user;
-    
-    if (u && !u.email_confirmed_at) {
-      setUser(null);
-    } else {
-      setUser(u ?? null);
-    }
-    
-    setLoading(false);
-  });
-
-  const { data: listener } = supabase.auth.onAuthStateChange(
-    async (_event, session) => {
-      const u = session?.user;
-      
-      if (u) {
-        const { data: userExists } = await supabase
-          .from("auth.users")
-          .select("id")
-          .eq("id", u.id)
-          .single()
-          .catch(() => ({ data: null }));
-        
-        if (!userExists) {
-          await supabase.auth.signOut();
-          setUser(null);
-          setProfile(null);
-          return;
-        }
-      }
-      
+  useEffect(() => {
+    // Session check on reload
+    supabase.auth.getSession().then(({ data }) => {
+      const u = data.session?.user;
       if (u && !u.email_confirmed_at) {
         setUser(null);
       } else {
         setUser(u ?? null);
       }
-    }
-  );
+      setLoading(false);
+    });
 
-  return () => listener.subscription.unsubscribe();
-}, []);
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        const u = session?.user;
+        
+        // Check if user exists in auth table
+        if (u) {
+          try {
+            const { data: userExists } = await supabase
+              .from("auth.users")
+              .select("id")
+              .eq("id", u.id)
+              .single();
+            
+            if (!userExists) {
+              await supabase.auth.signOut();
+              setUser(null);
+              setProfile(null);
+              return;
+            }
+          } catch (error) {
+            // If error, user doesn't exist or query failed
+            await supabase.auth.signOut();
+            setUser(null);
+            setProfile(null);
+            return;
+          }
+        }
+        
+        // Normal email confirmation check
+        if (u && !u.email_confirmed_at) {
+          setUser(null);
+        } else {
+          setUser(u ?? null);
+        }
+      }
+    );
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
   /* ================= PROFILE ================= */
-useEffect(() => {
-  if (!user) {
-    setProfile(null);
-    return;
-  }
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      return;
+    }
 
-  supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single()
-    .then(({ data }) => {
-      if (!data) {
-        supabase.auth.signOut();
+    const checkProfile = async () => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+
+        if (!data) {
+          // Profile doesn't exist, logout user
+          await supabase.auth.signOut();
+          setUser(null);
+          setProfile(null);
+        } else {
+          setProfile(data);
+        }
+      } catch (error) {
+        // Error means profile doesn't exist or query failed
+        await supabase.auth.signOut();
         setUser(null);
         setProfile(null);
-      } else {
-        setProfile(data);
       }
-    })
-    .catch(() => {
-      supabase.auth.signOut();
-      setUser(null);
-      setProfile(null);
-    });
-}, [user]);
-/* ================= FORGOT PASSWORD ================= */
-const forgotPassword = async (email) => {
-  try {
-    console.log("Checking if email exists in profiles:", email);
+    };
+
+    checkProfile();
+  }, [user]);
+
+  /* ================= CHECK USER ON EVERY RELOAD ================= */
+  // Extra safety check on every page reload
+  useEffect(() => {
+    const checkUserOnReload = async () => {
+      if (!user) return;
+      
+      try {
+        // Method 1: Check in auth.users (if you have access)
+        const { data: authUser } = await supabase
+          .from("auth.users")
+          .select("id")
+          .eq("id", user.id)
+          .single();
+          
+        if (!authUser) {
+          await supabase.auth.signOut();
+          setUser(null);
+          setProfile(null);
+        }
+      } catch (error) {
+        // If auth.users not accessible, check profiles
+        try {
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("id", user.id)
+            .single();
+            
+          if (!profileData) {
+            await supabase.auth.signOut();
+            setUser(null);
+            setProfile(null);
+          }
+        } catch (profileError) {
+          // If both fail, logout
+          await supabase.auth.signOut();
+          setUser(null);
+          setProfile(null);
+        }
+      }
+    };
     
-    // ✅ STEP 1: PEHLE PROFILES TABLE SE EMAIL CHECK KAREIN
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("id, email")
-      .eq("email", email.trim()) // Saaf email se check karein
-      .maybeSingle(); // Agar record na mile toh error na de
+    checkUserOnReload();
+  }, []); // Empty dependency = runs on mount/reload
 
-    if (profileError) {
-      console.error("Profile check error:", profileError);
-      throw new Error("System issue. Please try again.");
-    }
+  /* ================= FORGOT PASSWORD ================= */
+  const forgotPassword = async (email) => {
+    try {
+      console.log("Checking if email exists in profiles:", email);
+      
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, email")
+        .eq("email", email.trim())
+        .maybeSingle();
 
-    // ✅ STEP 2: AGAR PROFILES MAI EMAIL NAHI MILA
-    if (!profile) {
-      // Frontend ko success hi batayein, taake koi bata na sake ke kon sa email registered hai
+      if (profileError) {
+        console.error("Profile check error:", profileError);
+        throw new Error("System issue. Please try again.");
+      }
+
+      if (!profile) {
+        return true;
+      }
+      
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) {
+        console.error("Reset link send error:", error);
+        if (error.message.includes("rate limit")) {
+          throw new Error("Too many attempts");
+        } else {
+          throw new Error(`Reset link Failure: ${error.message}`);
+        }
+      }
+
+      console.log("Reset email successfully");
       return true;
+
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      throw err;
     }
+  };
 
-    
-    const redirectUrl = `${window.location.origin}/reset-password`;
-    
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl,
-    });
-
-    if (error) {
-      console.error("Reset link send error:", error);
-      if (error.message.includes("rate limit")) {
-        throw new Error("Too many attempts");
-      } else {
-        throw new Error(`Reset link Failure: ${error.message}`);
-      }
-    }
-
-    console.log("Reset email successfully");
-    return true;
-
-  } catch (err) {
-    console.error("Forgot password error:", err);
-    throw err;
-  }
-};
   /* ================= RESET PASSWORD ================= */
   const resetPassword = async (newPassword) => {
     try {
@@ -146,7 +203,6 @@ const forgotPassword = async (email) => {
   /* ================= SIGN UP ================= */
   const signUp = async (email, password, name) => {
     try {
-      // 👇 Step 1: Check if email already exists in profiles
       const { data: existingProfile } = await supabase
         .from("profiles")
         .select("email")
@@ -159,7 +215,6 @@ const forgotPassword = async (email) => {
         );
       }
 
-      // 👇 Step 2: Create auth user (sends verification email)
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -176,10 +231,7 @@ const forgotPassword = async (email) => {
       if (!data?.user) {
         throw new Error("Failed to create user account");
       }
-
-      // 👇 Profile will be created automatically by trigger after email verification
       
-      // 👇 Step 3: Accept invites (optional)
       try {
         await supabase.rpc("accept_workspace_invites", {
           user_email: email,
@@ -229,7 +281,7 @@ const forgotPassword = async (email) => {
         signUp, 
         signIn, 
         logout,
-        forgotPassword, // Use proper version
+        forgotPassword,
         resetPassword 
       }}
     >
