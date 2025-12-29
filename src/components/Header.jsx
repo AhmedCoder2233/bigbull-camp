@@ -3,6 +3,7 @@ import { FiUser, FiLogOut, FiHome, FiArrowRight, FiMenu, FiX, FiShield, FiDollar
 import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
+import NotificationBell  from "../context/NotificationContext";
 
 export default function Header() {
   const { user, logout, profile } = useContext(AuthContext);
@@ -107,6 +108,8 @@ export default function Header() {
                 className="w-10 h-10 xs:w-11 xs:h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 xl:w-18 xl:h-18 object-contain hover:opacity-90 transition-opacity"
               />
             </motion.div>
+
+            <NotificationBell /> 
 
             {/* Desktop Navigation - Visible on lg and above with better spacing */}
             <nav className="hidden lg:flex items-center ml-4 xl:ml-8 space-x-1 xl:space-x-3">
@@ -384,4 +387,3 @@ export default function Header() {
     </>
   );
 }
-
