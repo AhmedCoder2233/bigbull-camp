@@ -426,7 +426,11 @@ export default function App() {
                   
                   <Routes>
 
-                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/reset-password" element={
+                    <PrivateRoute>
+                    <ResetPassword />
+                    </PrivateRoute>
+                    } />
                     {/* PUBLIC ROUTES */}
                     <Route path="/auth" element={<SignIn />} />
                     
