@@ -1,12 +1,10 @@
 // ResetPassword.jsx
-import { useState, useContext, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "./context/AuthContext";
 import { motion } from "framer-motion";
 import { supabase } from "./lib/supabase";
 
 export default function ResetPassword() {
-  const { resetPassword } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -19,56 +17,33 @@ export default function ResetPassword() {
   const [isValidSession, setIsValidSession] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
-  // Check if user came from valid reset link
+  // Simply get tokens from URL and set session
   useEffect(() => {
-    const checkResetSession = async () => {
-      setIsChecking(true);
+    const setupSession = async () => {
       try {
-        // Get hash from URL
         const hash = window.location.hash;
-        console.log("URL Hash:", hash);
-        
-        // Parse tokens from URL
         const params = new URLSearchParams(hash.substring(1));
         const access_token = params.get('access_token');
         const refresh_token = params.get('refresh_token');
         
-        console.log("Tokens found:", { 
-          hasAccessToken: !!access_token, 
-          hasRefreshToken: !!refresh_token
-        });
-        
-        // Set session from URL tokens
         if (access_token && refresh_token) {
-          const { error: setError } = await supabase.auth.setSession({
+          const { error } = await supabase.auth.setSession({
             access_token,
             refresh_token,
           });
           
-          if (setError) {
-            console.error("Error setting session:", setError);
-            setError("Invalid or expired reset link. Please request a new one.");
-            setIsValidSession(false);
-          } else {
-            console.log("✅ Session set successfully");
+          if (!error) {
             setIsValidSession(true);
           }
-        } else {
-          console.log("No tokens found in URL");
-          setError("Invalid reset link. Please use the link from your email.");
-          setIsValidSession(false);
         }
-        
       } catch (err) {
-        console.error("Error:", err);
-        setError("Unable to verify reset link. Please request a new one.");
-        setIsValidSession(false);
+        console.error("Session setup error:", err);
       } finally {
         setIsChecking(false);
       }
     };
 
-    checkResetSession();
+    setupSession();
   }, []);
 
   const handleChange = (e) => {
@@ -102,7 +77,6 @@ export default function ResetPassword() {
 
       setSuccess("✅ Password reset successfully! Redirecting to login...");
       
-      // Clear the hash from URL
       window.history.replaceState(null, "", window.location.pathname);
       
       setTimeout(() => {
@@ -122,7 +96,7 @@ export default function ResetPassword() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-red-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Verifying reset link...</p>
+          <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
     );
@@ -139,7 +113,7 @@ export default function ResetPassword() {
               </svg>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Invalid Reset Link</h2>
-            <p className="text-gray-600 mb-6">{error || "This reset link is invalid or has expired."}</p>
+            <p className="text-gray-600 mb-6">Please use the reset link from your email.</p>
             <button
               onClick={() => navigate("/auth?mode=forgot")}
               className="w-full py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition"
@@ -166,7 +140,6 @@ export default function ResetPassword() {
         className="w-full max-w-md"
       >
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-          {/* Header */}
           <div className="text-center mb-8">
             <motion.div
               className="inline-block w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl mb-4"
@@ -184,21 +157,18 @@ export default function ResetPassword() {
             <p className="text-gray-600">Create a new password for your account</p>
           </div>
 
-          {/* Success Alert */}
           {success && (
             <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
               <p className="text-green-700 text-sm font-medium">{success}</p>
             </div>
           )}
 
-          {/* Error Alert */}
           {error && (
             <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
               <p className="text-red-700 text-sm font-medium">{error}</p>
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
