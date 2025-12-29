@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { FiUser, FiLogOut, FiHome, FiArrowRight, FiMenu, FiX } from "react-icons/fi";
+import { FiUser, FiLogOut, FiHome, FiArrowRight, FiMenu, FiX, FiShield } from "react-icons/fi";
 import { useContext, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -67,16 +67,37 @@ export default function Header() {
               </motion.div>
 
               {/* Desktop Navigation */}
-              <div className="hidden md:flex items-center gap-4">
+              <div className="hidden md:flex items-center">
                 {/* Home Button */}
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate("/")}
                   className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-red-700 font-medium hover:bg-red-50 rounded-lg transition-colors"
                 >
                   <FiHome className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span>Home</span>
+                  <span                   onClick={() => navigate("/")}
+>Home</span>
+           
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-red-700 font-medium hover:bg-red-50 rounded-lg transition-colors"
+                >
+                
+                  <FiShield className="w-4 h-4 sm:w-5 sm:h-5"/>
+                  <span                   onClick={() => navigate("/about")}
+>About</span>
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-red-700 font-medium hover:bg-red-50 rounded-lg transition-colors"
+                >
+                
+                  <FiShield className="w-4 h-4 sm:w-5 sm:h-5"/>
+                  <span                   onClick={() => navigate("/pricing")}
+>Pricing</span>
                 </motion.button>
 
                 {/* Workspaces Link - Only show if logged in */}
@@ -148,7 +169,7 @@ export default function Header() {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => navigate("/signin")}
+                    onClick={() => navigate("/auth")}
                     className="px-4 py-2 sm:px-6 sm:py-2.5 text-gray-700 font-semibold hover:text-red-700 transition-colors"
                   >
                     Sign In
@@ -158,7 +179,7 @@ export default function Header() {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => navigate("/signup")}
+                    onClick={() => navigate("/auth")}
                     className="px-4 py-2 sm:px-6 sm:py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-semibold hover:shadow-lg transition-shadow hover:shadow-red-200"
                   >
                     Get Started Free
@@ -302,6 +323,26 @@ export default function Header() {
                         <p className="text-sm text-gray-500">View workspace invites</p>
                       </div>
                     </motion.button>
+                                   <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-red-700 font-medium hover:bg-red-50 rounded-lg transition-colors"
+                >
+                
+                  <FiShield className="w-4 h-4 sm:w-5 sm:h-5"/>
+                  <span                   onClick={() => navigate("/about")}
+>About</span>
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-red-700 font-medium hover:bg-red-50 rounded-lg transition-colors"
+                >
+                
+                  <FiShield className="w-4 h-4 sm:w-5 sm:h-5"/>
+                  <span                   onClick={() => navigate("/pricing")}
+>Pricing</span>
+                </motion.button>
                   </>
                 )}
 
