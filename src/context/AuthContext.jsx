@@ -65,10 +65,11 @@ export function AuthProvider({ children }) {
   }, [user]);
 
   /* ================= FORGOT PASSWORD ================= */
-  const forgotPassword = async (email) => {
+   const forgotPassword = async (email) => {
     try {
-      console.log("Checking if email exists in profiles:", email);
+      console.log("Sending password reset email to:", email);
       
+      // Step 1: Check if user exists (optional but good UX)
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("id, email")
@@ -80,26 +81,38 @@ export function AuthProvider({ children }) {
         throw new Error("System issue. Please try again.");
       }
 
+      // Security: Always return success even if email doesn't exist
+      // This prevents email enumeration attacks
       if (!profile) {
+        console.log("Email not found, but returning success for security");
         return true;
       }
 
-      const redirectUrl = `https://bigbullcamp.com/reset-password`;
+      // Step 2: Send reset email with CORRECT redirect URL
+      // IMPORTANT: Use your actual domain
+      const redirectUrl = `${window.location.origin}/reset-password`;
       
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      console.log("Sending reset email with redirect:", redirectUrl);
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: redirectUrl,
       });
 
       if (error) {
         console.error("Reset link send error:", error);
+        
+        // Handle specific errors
         if (error.message.includes("rate limit")) {
-          throw new Error("Too many attempts");
+          throw new Error("Too many attempts. Please try again in a few minutes.");
+        } else if (error.message.includes("not found")) {
+          // Still return success for security
+          return true;
         } else {
-          throw new Error(`Reset link Failure: ${error.message}`);
+          throw new Error(`Failed to send reset link: ${error.message}`);
         }
       }
 
-      console.log("Reset email successfully");
+      console.log("Reset email sent successfully");
       return true;
 
     } catch (err) {
@@ -213,4 +226,5 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
 
