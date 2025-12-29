@@ -86,7 +86,7 @@ export default function Header() {
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ type: "spring", stiffness: 100, damping: 20 }}
-        className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+        className={`top-0 z-50 w-full transition-all duration-300 ${
           scrolled 
             ? "bg-white/95 backdrop-blur-lg shadow-lg border-b border-red-100/50" 
             : "bg-white/90 backdrop-blur-md border-b border-red-100"
@@ -384,3 +384,4 @@ export default function Header() {
     </>
   );
 }
+
