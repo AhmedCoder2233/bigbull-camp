@@ -19,6 +19,7 @@ import ResetPassword from "./ResetPassword";
 import AboutUs from "./About";
 import Pricing from "./Pricing";
 import Contact from "./Contact";
+import { NotificationProvider } from "./context/NotificationContext";
 
 /* ================= PRIVATE ROUTE ================= */
 function PrivateRoute({ children }) {
@@ -168,6 +169,7 @@ export default function App() {
 
   return (
     <AuthProvider>
+        <NotificationProvider>
       <WorkspaceProvider>
         <ActiveWorkspaceProvider>
           <BrowserRouter>
@@ -177,7 +179,7 @@ export default function App() {
             <AnimatePresence>
               {showIntro && (
                 <motion.div
-                  initial={{ opacity: 0 }}
+                initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.5 }}
@@ -332,12 +334,12 @@ export default function App() {
                             initial={{ width: "0%" }}
                             animate={{ width: `${loadingProgress}%` }}
                             className="h-full bg-gradient-to-r from-red-600 via-red-500 to-red-400 relative"
-                          >
+                            >
                             <motion.div
                               animate={{ x: ['-100%', '200%'] }}
                               transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
                               className="absolute inset-0 w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                            />
+                              />
                           </motion.div>
                         </div>
                       </div>
@@ -376,7 +378,7 @@ export default function App() {
                                 className={`w-2 h-2 rounded-full ${
                                   item.progress ? 'bg-red-500' : 'bg-gray-600'
                                 }`}
-                              />
+                                />
                             </div>
                           </motion.div>
                         ))}
@@ -389,7 +391,7 @@ export default function App() {
                       animate={{ opacity: 0.5 }}
                       transition={{ delay: 2.5 }}
                       className="absolute bottom-8 text-center"
-                    >
+                      >
                       <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 font-light`}>
                         © {new Date().getFullYear()} Big Bull Camp • Enterprise Edition
                       </p>
@@ -405,7 +407,7 @@ export default function App() {
                       background: 'linear-gradient(to bottom, transparent, rgba(239, 68, 68, 0.03), transparent)',
                       height: '100px'
                     }}
-                  />
+                    />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -414,11 +416,11 @@ export default function App() {
             <AnimatePresence>
               {!showIntro && (
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="w-full"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="w-full"
                 >
                   <Header />
                   
@@ -436,7 +438,7 @@ export default function App() {
                           <Workspaces />
                         </PrivateRoute>
                       }
-                    />
+                      />
                     
                     <Route
                       path="/invites"
@@ -449,21 +451,21 @@ export default function App() {
                     <Route
                       path="/pricing"
                       element={
-                          <Pricing />
+                        <Pricing />
                       }
                     />
                     <Route
                       path="/contact"
                       element={
-                          <Contact />
+                        <Contact />
                       }
-                    />
+                      />
                     <Route
                       path="/about"
                       element={
-                          <AboutUs />
+                        <AboutUs />
                       }
-                    />
+                      />
 
                     <Route
                       path="/workspace/:id"
@@ -472,16 +474,16 @@ export default function App() {
                           <WorkspaceDetails />
                         </PrivateRoute>
                       }
-                    />
+                      />
 
                     <Route
                       path="/*"
                       element={
-                          <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white w-full">
+                        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white w-full">
                             <Sidebar />
                           </div>
                       }
-                    />
+                      />
                   </Routes>
                 </motion.div>
               )}
@@ -489,6 +491,7 @@ export default function App() {
           </BrowserRouter>
         </ActiveWorkspaceProvider>
       </WorkspaceProvider>
+                      </NotificationProvider> 
     </AuthProvider>
   );
 }
