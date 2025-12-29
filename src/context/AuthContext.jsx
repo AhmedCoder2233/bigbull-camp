@@ -84,7 +84,7 @@ export function AuthProvider({ children }) {
         return true;
       }
 
-      const redirectUrl = `${window.location.origin}/reset-password`;
+      const redirectUrl = `https://bigbullcamp.com/reset-password`;
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
@@ -143,7 +143,7 @@ export function AuthProvider({ children }) {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}`,
+          emailRedirectTo: `https://bigbullcamp.com/`,
           data: {
             name: name,
           },
@@ -213,3 +213,4 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
