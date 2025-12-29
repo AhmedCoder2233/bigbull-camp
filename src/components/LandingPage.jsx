@@ -189,7 +189,7 @@ export default function LandingPage() {
     {
       icon: FiTrendingUp,
       title: "Performance Analytics",
-      description: "Advanced dashboards with predictive insights and automated reporting",
+      description: "Advanced workspaces & task report analytics to measure everything",
       gradient: "from-red-700 to-red-800",
       accent: "bg-gradient-to-r from-red-200 to-red-300",
       action: () => navigate("/workspaces")
@@ -302,85 +302,7 @@ export default function LandingPage() {
         />
       </div>
 
-      {/* Mobile Navigation */}
-      <motion.div
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-red-100 shadow-sm"
-      >
-        <div className="px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center">
-              <img 
-                src="/logo.png" 
-                alt="BigBull CAMP Logo" 
-                className="w-8 h-8 object-contain"
-              />
-            </div>
-            <div>
-              <div className="text-sm font-bold bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">
-                BIG BULL CAMP
-              </div>
-            </div>
-          </div>
-          
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-lg bg-red-50 text-red-600"
-          >
-            {isMobileMenuOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
-          </button>
-        </div>
-
-        {/* Mobile Menu Dropdown */}
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            className="bg-white border-t border-red-50 px-4 py-3"
-          >
-            <div className="space-y-3">
-              <button
-                onClick={() => {
-                  navigate("/workspaces");
-                  setIsMobileMenuOpen(false);
-                }}
-                className="block w-full text-left px-3 py-2 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 font-medium"
-              >
-                Dashboard
-              </button>
-              <button
-                onClick={() => {
-                  navigate("/invites");
-                  setIsMobileMenuOpen(false);
-                }}
-                className="block w-full text-left px-3 py-2 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 font-medium"
-              >
-                Team Management
-              </button>
-              <button
-                onClick={() => {
-                  navigate(user ? "/workspaces" : "/signup");
-                  setIsMobileMenuOpen(false);
-                }}
-                className="block w-full text-left px-3 py-2 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 font-medium"
-              >
-                Pricing
-              </button>
-              <button
-                onClick={() => {
-                  navigate(user ? "/workspaces" : "/auth");
-                  setIsMobileMenuOpen(false);
-                }}
-                className="block w-full text-left px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-semibold mt-4"
-              >
-                {user ? "Go to Dashboard" : "Start Free Trial"}
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </motion.div>
-
+     
       {/* Hero Section with Splash Background Image */}
       <section className="relative pt-20 md:pt-0 md:py-20 lg:py-28 px-4 sm:px-6 lg:px-8 min-h-screen md:min-h-[90vh] flex items-center overflow-hidden">
         {/* Background Image - Professional Project Management */}
@@ -867,7 +789,7 @@ export default function LandingPage() {
                   
                   <div className="relative z-10">
                     <div className={`w-12 h-12 md:w-16 md:h-16 rounded-xl ${feature.gradient} flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 transition-transform duration-500 shadow-lg`}>
-                      <feature.icon className="w-6 h-6 md:w-8 md:h-8 text-white" />
+                      <feature.icon className="w-6 h-6 md:w-8 md:h-8 text-black" />
                     </div>
                     
                     <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-3 group-hover:text-red-700 transition-colors">
@@ -977,10 +899,10 @@ export default function LandingPage() {
                       boxShadow: "0 20px 40px rgba(239, 68, 68, 0.2)"
                     }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => navigate(user ? "/workspaces" : "/auth")}
+                    onClick={() => navigate("/pricing")}
                     className="group px-6 md:px-8 lg:px-10 py-3 md:py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-bold text-base md:text-lg hover:shadow-xl transition-all duration-300 inline-flex items-center gap-2 md:gap-3 w-full sm:w-auto justify-center"
                   >
-                    <span>{user ? "Launch Dashboard" : "Get Started Free"}</span>
+                    <span>Purchase a Plan</span>
                     <FiArrowRight className="w-5 h-5 md:w-6 md:h-6 group-hover:translate-x-2 transition-transform" />
                   </motion.button>
                   
