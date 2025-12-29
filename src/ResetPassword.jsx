@@ -3,7 +3,7 @@ import { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "./context/AuthContext";
 import { motion } from "framer-motion";
-import { supabase } from "./lib/supabase"; // IMPORTANT: Import supabase
+import { supabase } from "./lib/supabase";
 
 export default function ResetPassword() {
   const { resetPassword } = useContext(AuthContext);
@@ -24,7 +24,6 @@ export default function ResetPassword() {
     const checkResetSession = async () => {
       setIsChecking(true);
       try {
-        // Get current session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -35,16 +34,13 @@ export default function ResetPassword() {
         }
 
         if (session) {
-          // Check if this is a recovery session
           const hash = window.location.hash;
           console.log("URL Hash:", hash);
           
-          // Supabase adds #access_token=...&refresh_token=...&type=recovery
           if (hash && hash.includes("type=recovery")) {
             console.log("Valid recovery link detected");
             setIsValidSession(true);
             
-            // Try to set the session from URL
             const { error: urlError } = await supabase.auth.setSession({
               access_token: new URLSearchParams(hash.substring(1)).get('access_token'),
               refresh_token: new URLSearchParams(hash.substring(1)).get('refresh_token'),
@@ -54,24 +50,20 @@ export default function ResetPassword() {
               console.error("Set session error:", urlError);
             }
           } else {
-            // Check if already authenticated (came back after email click)
             const user = session.user;
             console.log("User from session:", user);
             setIsValidSession(true);
           }
         } else {
-          // No session, check URL for recovery tokens
           const hash = window.location.hash;
           if (hash && hash.includes("type=recovery")) {
             console.log("Setting session from URL hash");
             
-            // Extract tokens from URL
             const params = new URLSearchParams(hash.substring(1));
             const access_token = params.get('access_token');
             const refresh_token = params.get('refresh_token');
             
             if (access_token && refresh_token) {
-              // Set the session from URL
               const { error: setError } = await supabase.auth.setSession({
                 access_token,
                 refresh_token,
@@ -111,7 +103,6 @@ export default function ResetPassword() {
     setError("");
     setSuccess("");
 
-    // Validation
     if (formData.password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
@@ -125,7 +116,6 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
-      // Update password
       const { error: updateError } = await supabase.auth.updateUser({
         password: formData.password,
       });
@@ -134,10 +124,8 @@ export default function ResetPassword() {
 
       setSuccess("✅ Password reset successfully! Redirecting to login...");
       
-      // Clear URL hash to prevent re-use
       window.history.replaceState(null, "", window.location.pathname);
       
-      // Auto sign out and redirect after 3 seconds
       setTimeout(() => {
         supabase.auth.signOut();
         navigate("/auth");
@@ -150,7 +138,6 @@ export default function ResetPassword() {
     }
   };
 
-  // Show loading while checking session
   if (isChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-red-50">
@@ -162,7 +149,6 @@ export default function ResetPassword() {
     );
   }
 
-  // Show error if invalid session
   if (!isValidSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-red-50 p-4">
@@ -204,7 +190,7 @@ export default function ResetPassword() {
           {/* Header */}
           <div className="text-center mb-8">
             <motion.div
-              className="inline-block w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl mb-4"
+              className="inline-block w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl mb-4"
               whileHover={{ scale: 1.1 }}
               transition={{ duration: 0.3 }}
             >
@@ -244,7 +230,7 @@ export default function ResetPassword() {
                 name="password"
                 required
                 minLength="6"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:outline-none transition disabled:bg-gray-100"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 focus:outline-none transition disabled:bg-gray-100"
                 placeholder="Enter new password (min. 6 characters)"
                 disabled={loading}
                 value={formData.password}
@@ -262,7 +248,7 @@ export default function ResetPassword() {
                 name="confirmPassword"
                 required
                 minLength="6"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:outline-none transition disabled:bg-gray-100"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 focus:outline-none transition disabled:bg-gray-100"
                 placeholder="Confirm new password"
                 disabled={loading}
                 value={formData.confirmPassword}
@@ -277,7 +263,7 @@ export default function ResetPassword() {
               className={`w-full py-3.5 rounded-lg font-semibold text-white transition-all duration-200 ${
                 loading
                   ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl"
+                  : "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg hover:shadow-xl"
               }`}
             >
               {loading ? (
