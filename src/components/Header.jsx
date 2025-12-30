@@ -54,13 +54,20 @@ export default function Header() {
 
   const navItems = [
     { path: "/", label: "Home", icon: <FiHome />, alwaysVisible: true },
-    { path: "/about", label: "About", icon: <FiInfo />, alwaysVisible: true },
-    { path: "/pricing", label: "Pricing", icon: <FiDollarSign />, alwaysVisible: true },
+    { 
+      path: "/about", 
+      label: "About", 
+      icon: <FiInfo />, 
+    },
+    { 
+      path: "/pricing", 
+      label: "Pricing", 
+      icon: <FiDollarSign />, 
+    },
     { 
       path: "/contact", 
       label: "Contact", 
       icon: <FiMail />, 
-      alwaysVisible: true,
     },
   ];
 
@@ -113,22 +120,28 @@ export default function Header() {
 
             {/* Desktop Navigation - Visible on lg and above with better spacing */}
             <nav className="hidden lg:flex items-center ml-4 xl:ml-8 space-x-1 xl:space-x-3">
-              {navItems.map((item) => (
-                <motion.button
-                  key={item.path}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate(item.path)}
-                  className={`flex items-center gap-1.5 xl:gap-2 px-2.5 xl:px-4 py-2 xl:py-2.5 rounded-lg xl:rounded-xl text-sm xl:text-base font-medium transition-all whitespace-nowrap ${
-                    isActivePath(item.path)
-                      ? "text-red-700 bg-red-50 border border-red-200"
-                      : "text-gray-700 hover:text-red-700 hover:bg-red-50/50"
-                  }`}
-                >
-                  <span className="text-base xl:text-lg">{item.icon}</span>
-                  <span>{item.label}</span>
-                </motion.button>
-              ))}
+              {navItems.map((item) => {
+                // Agar user authenticated hai aur item About ya Pricing hai, to mat show karo
+                if (user && (item.path === "/about" || item.path === "/pricing")) {
+                  return null;
+                }
+                return (
+                  <motion.button
+                    key={item.path}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => navigate(item.path)}
+                    className={`flex items-center gap-1.5 xl:gap-2 px-2.5 xl:px-4 py-2 xl:py-2.5 rounded-lg xl:rounded-xl text-sm xl:text-base font-medium transition-all whitespace-nowrap ${
+                      isActivePath(item.path)
+                        ? "text-red-700 bg-red-50 border border-red-200"
+                        : "text-gray-700 hover:text-red-700 hover:bg-red-50/50"
+                    }`}
+                  >
+                    <span className="text-base xl:text-lg">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </motion.button>
+                );
+              })}
 
               {user && authNavItems.map((item) => (
                 <motion.button
@@ -301,34 +314,42 @@ export default function Header() {
               {/* Mobile Menu Content with responsive sizing */}
               <div className="h-[calc(100vh-160px)] sm:h-[calc(100vh-180px)] overflow-y-auto p-3 sm:p-4">
                 <div className="space-y-1.5 sm:space-y-2">
-                  {[...navItems, ...(user ? authNavItems : [])].map((item) => (
-                    <motion.button
-                      key={item.path}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        navigate(item.path);
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl text-left transition-all ${
-                        isActivePath(item.path)
-                          ? "bg-red-50 border border-red-200"
-                          : "hover:bg-red-50/50"
-                      }`}
-                    >
-                      <span className={`text-lg sm:text-xl ${
-                        isActivePath(item.path) ? "text-red-600" : "text-gray-600"
-                      }`}>
-                        {item.icon}
-                      </span>
-                      <div className="flex-1">
-                        <span className={`font-medium text-sm sm:text-base ${
-                          isActivePath(item.path) ? "text-red-700" : "text-gray-900"
+                  {[...navItems, ...(user ? authNavItems : [])]
+                    .filter(item => {
+                      // Agar user authenticated hai aur item About ya Pricing hai, to filter out karo
+                      if (user && (item.path === "/about" || item.path === "/pricing")) {
+                        return false;
+                      }
+                      return true;
+                    })
+                    .map((item) => (
+                      <motion.button
+                        key={item.path}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                          navigate(item.path);
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl text-left transition-all ${
+                          isActivePath(item.path)
+                            ? "bg-red-50 border border-red-200"
+                            : "hover:bg-red-50/50"
+                        }`}
+                      >
+                        <span className={`text-lg sm:text-xl ${
+                          isActivePath(item.path) ? "text-red-600" : "text-gray-600"
                         }`}>
-                          {item.label}
+                          {item.icon}
                         </span>
-                      </div>
-                    </motion.button>
-                  ))}
+                        <div className="flex-1">
+                          <span className={`font-medium text-sm sm:text-base ${
+                            isActivePath(item.path) ? "text-red-700" : "text-gray-900"
+                          }`}>
+                            {item.label}
+                          </span>
+                        </div>
+                      </motion.button>
+                    ))}
                 </div>
 
                 {/* Mobile Auth Buttons with responsive sizing */}
