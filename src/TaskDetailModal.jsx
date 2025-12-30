@@ -16,7 +16,8 @@ import {
   FiLoader,
   FiType,
   FiClock,
-  FiActivity
+  FiActivity,
+  FiMove
 } from "react-icons/fi";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
@@ -45,37 +46,37 @@ export default function TaskDetailPanel({
   const [isSaving, setIsSaving] = useState(false);
   const [createdByName, setCreatedByName] = useState("");
 
-// Fetch created by user name
-useEffect(() => {
-  const fetchCreatedByName = async () => {
-    if (!task?.created_by) {
-      setCreatedByName("Unknown");
-      return;
-    }
-    
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("name, email")
-        .eq("id", task.created_by)
-        .single();
-      
-      if (error || !data) {
-        setCreatedByName("User");
+  // Fetch created by user name
+  useEffect(() => {
+    const fetchCreatedByName = async () => {
+      if (!task?.created_by) {
+        setCreatedByName("Unknown");
         return;
       }
       
-      setCreatedByName(data.name || data.email?.split('@')[0] || "User");
-    } catch (error) {
-      console.error("Error fetching created by user:", error);
-      setCreatedByName("User");
-    }
-  };
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("name, email")
+          .eq("id", task.created_by)
+          .single();
+        
+        if (error || !data) {
+          setCreatedByName("User");
+          return;
+        }
+        
+        setCreatedByName(data.name || data.email?.split('@')[0] || "User");
+      } catch (error) {
+        console.error("Error fetching created by user:", error);
+        setCreatedByName("User");
+      }
+    };
 
-  if (task) {
-    fetchCreatedByName();
-  }
-}, [task]);
+    if (task) {
+      fetchCreatedByName();
+    }
+  }, [task]);
 
   // Get current user's name from profiles table
   useEffect(() => {
@@ -138,18 +139,19 @@ useEffect(() => {
         console.error("Error logging activity:", error);
       } else {
         // Refresh activities list
-        fetchActivities();
+        await fetchTaskActivities();
       }
     } catch (error) {
       console.error("Error logging activity:", error);
     }
   };
 
-  // Function to fetch activities
-  const fetchActivities = async () => {
+  // Function to fetch task activities (only for this specific task)
+  const fetchTaskActivities = async () => {
     if (!task) return;
     
     try {
+      // Fetch regular activities for this task
       const { data: activitiesData, error } = await supabase
         .from("task_activities")
         .select("*")
@@ -161,6 +163,20 @@ useEffect(() => {
         return;
       }
 
+      // Fetch task movements for this specific task
+      const { data: movementsData } = await supabase
+        .from("task_movements")
+        .select(`
+          *,
+          moved_by:profiles!task_movements_moved_by_user_id_fkey(name)
+        `)
+        .eq("task_id", task.id)
+        .order("created_at", { ascending: false });
+
+      // Process activities data
+      let allActivities = [];
+      
+      // Add regular activities
       if (activitiesData && activitiesData.length > 0) {
         const userIds = [...new Set(activitiesData.map(a => a.user_id).filter(Boolean))];
         
@@ -183,16 +199,55 @@ useEffect(() => {
           ...activity,
           user_name: activity.user_id ? 
             (userProfiles[activity.user_id] || "User") : 
-            "System"
+            "System",
+          type: "activity"
         }));
 
-        setActivities(activitiesWithUsers);
-      } else {
-        setActivities([]);
+        allActivities = [...allActivities, ...activitiesWithUsers];
       }
+
+      // Add task movements
+      if (movementsData && movementsData.length > 0) {
+        const movementsAsActivities = movementsData.map(movement => ({
+          id: movement.id,
+          task_id: movement.task_id,
+          user_id: movement.moved_by_user_id,
+          user_name: movement.moved_by?.name || "User",
+          action: "status_changed",
+          details: {
+            from_status: movement.from_status,
+            to_status: movement.to_status
+          },
+          old_value: movement.from_status,
+          new_value: movement.to_status,
+          created_at: movement.created_at,
+          type: "movement"
+        }));
+
+        allActivities = [...allActivities, ...movementsAsActivities];
+      }
+
+      // Sort all activities by date (newest first)
+      allActivities.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      
+      setActivities(allActivities);
+      
     } catch (error) {
-      console.error("Error fetching activities:", error);
+      console.error("Error fetching task activities:", error);
     }
+  };
+
+  // Function to format stage name for display
+  const formatStageName = (stageId) => {
+    const stageMap = {
+      'planning': 'Planning',
+      'in_progress': 'In Progress',
+      'at_risk': 'At Risk',
+      'update_required': 'Update Required',
+      'on_hold': 'On Hold',
+      'completed': 'Completed'
+    };
+    return stageMap[stageId] || stageId.replace('_', ' ');
   };
 
   // Fetch task details and comments
@@ -224,8 +279,8 @@ useEffect(() => {
       // Fetch comments
       await fetchComments();
       
-      // Fetch activities
-      await fetchActivities();
+      // Fetch task activities (including movements) for this specific task
+      await fetchTaskActivities();
       
       // Fetch assigned user name
       if (task.assigned_to) {
@@ -328,7 +383,6 @@ useEffect(() => {
   };
 
   const handleAddComment = async () => {
-    
     setError(null);
     
     // Check for empty comment
@@ -355,7 +409,6 @@ useEffect(() => {
     const commentText = newComment.trim();
     
     try {
-
       const { data: comment, error: insertError } = await supabase
         .from("task_comments")
         .insert({
@@ -658,10 +711,33 @@ useEffect(() => {
         return "Created this task";
       
       case "status_changed":
-        return `Status changed to ${activity.new_value}`;
+        // This is for task movements
+        const fromStage = formatStageName(activity.old_value || details.from_status);
+        const toStage = formatStageName(activity.new_value || details.to_status);
+        return `Moved task from ${fromStage} to ${toStage}`;
       
       default:
         return "Made changes";
+    }
+  };
+
+  // Function to get icon for activity type
+  const getActivityIcon = (action) => {
+    switch(action) {
+      case "status_changed":
+        return <FiMove className="w-4 h-4 text-purple-600" />;
+      case "comment_added":
+        return <FiMessageSquare className="w-4 h-4 text-blue-600" />;
+      case "file_uploaded":
+      case "file_downloaded":
+      case "file_deleted":
+        return <FiFile className="w-4 h-4 text-green-600" />;
+      case "title_updated":
+        return <FiType className="w-4 h-4 text-yellow-600" />;
+      case "description_updated":
+        return <FiEdit2 className="w-4 h-4 text-indigo-600" />;
+      default:
+        return <FiActivity className="w-4 h-4 text-gray-600" />;
     }
   };
 
@@ -721,7 +797,7 @@ useEffect(() => {
                       task.status === 'at_risk' ? 'bg-red-100 text-red-800' :
                       'bg-blue-100 text-blue-800'
                     }`}>
-                      {task.status.replace('_', ' ').toUpperCase()}
+                      {formatStageName(task.status)}
                     </span>
                     <span className="text-xs text-gray-500">
                       Created: {format(new Date(task.created_at), 'MMM d, yyyy')}
@@ -760,12 +836,14 @@ useEffect(() => {
           {/* Debug Info (Optional - remove in production) */}
           {process.env.NODE_ENV === 'development' && (
             <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg text-xs">
-              <p className="font-medium text-blue-800 mb-1">User Status:</p>
-              <p>Logged In: <span className="font-medium">{currentUserId ? "✅ Yes" : "❌ No"}</span></p>
-              <p>User ID: <span className="font-mono">{currentUserId ? currentUserId.slice(0, 8) + "..." : "null"}</span></p>
-              <p>Can Edit: <span className="font-medium">{canEditTask() ? "✅ Yes" : "❌ No"}</span></p>
-              <p>Display Name: <span className="font-medium">{userName}</span></p>
-              <p>Role: <span className="font-medium">{userRole}</span></p>
+              <p className="font-medium text-blue-800 mb-1">Task Activity Status:</p>
+              <p>Task ID: <span className="font-mono">{task?.id?.slice(0, 8) || "N/A"}</span></p>
+              <p>Activities: <span className="font-medium">{activities.length}</span></p>
+              <p>Comments: <span className="font-medium">{comments.length}</span></p>
+              <p>Attachments: <span className="font-medium">{attachments.length}</span></p>
+              <p>Task Movements: <span className="font-medium">
+                {activities.filter(a => a.action === "status_changed").length}
+              </span></p>
             </div>
           )}
 
@@ -784,30 +862,30 @@ useEffect(() => {
             </div>
           )}
 
-          {/* Activity Log Section */}
+          {/* Activity Log Section - ONLY FOR THIS TASK */}
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <FiActivity className="w-5 h-5" />
-              <span>Activity Log</span>
+              <span>Activity Log - This Task</span>
               <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">
                 {activities.length}
               </span>
             </h3>
             
-            <div className="space-y-3 max-h-60 overflow-y-auto">
-              {activities.length === 0 ? (
-                <div className="text-center py-4">
-                  <p className="text-gray-500">No activity yet</p>
-                  <p className="text-sm text-gray-400 mt-1">Actions will appear here</p>
-                </div>
-              ) : (
-                activities.map((activity) => (
-                  <div key={activity.id} className="pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+            {activities.length === 0 ? (
+              <div className="text-center py-8 border border-dashed border-gray-300 rounded-lg">
+                <FiActivity className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No activity recorded for this task</p>
+                <p className="text-sm text-gray-400 mt-1">Movements, comments, and edits will appear here</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {activities.map((activity) => (
+                  <div key={activity.id || activity.task_id + activity.created_at} 
+                       className="pb-3 border-b border-gray-100 last:border-0 last:pb-0">
                     <div className="flex gap-3">
                       <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                        <span className="text-purple-600 text-sm font-medium">
-                          {(activity.user_name || "S").charAt(0).toUpperCase()}
-                        </span>
+                        {getActivityIcon(activity.action)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1">
@@ -829,7 +907,28 @@ useEffect(() => {
                         <p className="text-sm text-gray-700">
                           {getActivityMessage(activity)}
                         </p>
-                        {activity.old_value && activity.new_value && (
+                        
+                        {/* Show stage movement details for this task */}
+                        {activity.action === "status_changed" && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs px-2 py-0.5 bg-red-100 text-red-800 rounded">
+                                {formatStageName(activity.old_value || activity.details?.from_status)}
+                              </span>
+                              <span className="text-xs text-gray-500">→</span>
+                              <span className="text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded">
+                                {formatStageName(activity.new_value || activity.details?.to_status)}
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-xs text-gray-500">
+                              <FiMove className="inline w-3 h-3 mr-1" />
+                              Task moved
+                            </span>
+                          </div>
+                        )}
+                        
+                        {activity.action !== "status_changed" && activity.old_value && activity.new_value && (
                           <div className="mt-1 text-xs text-gray-500 space-y-1">
                             <div className="flex items-center gap-2">
                               <span className="text-red-600 line-through truncate max-w-xs">
@@ -845,12 +944,12 @@ useEffect(() => {
                       </div>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Comments Section - Moved to top */}
+          {/* Comments Section */}
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <span>Comments</span>
@@ -1041,56 +1140,56 @@ useEffect(() => {
               )}
             </div>
 
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-  <div className="flex items-center gap-2 text-gray-600 mb-2">
-    <FiUser className="w-4 h-4" />
-    <span className="text-sm font-medium">Assigned By</span>
-  </div>
-  <p className="font-semibold text-gray-900 truncate">
-    {createdByName}
-  </p>
-  {task.created_by && (
-    <p className="text-xs text-gray-500 mt-1 truncate">
-      ID: {task.created_by.slice(0, 8)}...
-    </p>
-  )}
-</div>
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-2 text-gray-600 mb-2">
+                <FiUser className="w-4 h-4" />
+                <span className="text-sm font-medium">Assigned By</span>
+              </div>
+              <p className="font-semibold text-gray-900 truncate">
+                {createdByName}
+              </p>
+              {task.created_by && (
+                <p className="text-xs text-gray-500 mt-1 truncate">
+                  ID: {task.created_by.slice(0, 8)}...
+                </p>
+              )}
+            </div>
 
-          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-  <div className="flex items-center gap-2 text-gray-600 mb-2">
-    <FiCalendar className="w-4 h-4" />
-    <span className="text-sm font-medium">Due Date & Time</span>
-  </div>
-  <p className="font-semibold text-gray-900">
-    {task.due_date ? (
-      <span>
-        {new Date(task.due_date).toLocaleString('en-US', {
-          timeZone: 'Asia/Karachi', // Pakistani timezone
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        })}
-        <span className="text-xs text-gray-500 ml-2">(PKT)</span>
-      </span>
-    ) : (
-      <span className="text-gray-400">No due date</span>
-    )}
-  </p>
-  {task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed' && (
-    <p className="text-xs text-red-600 mt-1">Overdue</p>
-  )}
-  {task.due_date && new Date(task.due_date) > new Date() && (
-    <p className="text-xs text-gray-500 mt-1">
-      {new Date(task.due_date).toLocaleDateString('en-US', {
-        timeZone: 'Asia/Karachi',
-        weekday: 'long'
-      })}
-    </p>
-  )}
-</div>
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-2 text-gray-600 mb-2">
+                <FiCalendar className="w-4 h-4" />
+                <span className="text-sm font-medium">Due Date & Time</span>
+              </div>
+              <p className="font-semibold text-gray-900">
+                {task.due_date ? (
+                  <span>
+                    {new Date(task.due_date).toLocaleString('en-US', {
+                      timeZone: 'Asia/Karachi',
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true
+                    })}
+                    <span className="text-xs text-gray-500 ml-2">(PKT)</span>
+                  </span>
+                ) : (
+                  <span className="text-gray-400">No due date</span>
+                )}
+              </p>
+              {task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed' && (
+                <p className="text-xs text-red-600 mt-1">Overdue</p>
+              )}
+              {task.due_date && new Date(task.due_date) > new Date() && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {new Date(task.due_date).toLocaleDateString('en-US', {
+                    timeZone: 'Asia/Karachi',
+                    weekday: 'long'
+                  })}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Attachments Section */}
