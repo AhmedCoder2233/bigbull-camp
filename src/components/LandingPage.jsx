@@ -414,7 +414,7 @@ export default function LandingPage() {
                   boxShadow: "0 20px 40px rgba(239, 68, 68, 0.4)"
                 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => navigate(user ? "/workspaces" : "/auth")}
+                onClick={() => navigate("/pricing")}
                 className="group relative px-8 sm:px-10 py-3 sm:py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-bold text-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-3 w-full sm:w-auto min-w-[200px] overflow-hidden border-2 border-red-500/30"
               >
                 {/* Button shine effect */}
@@ -429,7 +429,7 @@ export default function LandingPage() {
                   }}
                   className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
                 />
-                <span className="relative z-10">{user ? "Go to Dashboard" : "Start Free Trial"}</span>
+                <span className="relative z-10">Get Started</span>
                 <FiArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-2 transition-transform" />
               </motion.button>
               
