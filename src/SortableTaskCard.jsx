@@ -6,7 +6,12 @@ export function SortableTaskCard({ task, onTaskClick, currentUserId, userRole })
   // Check if user can drag this task
   const canDragTask = () => {
     if (userRole === "admin") return true;
-    if (task.assigned_to === currentUserId) return true; // Only creator
+    
+    if (task.created_by === currentUserId) return true;
+    
+    // Assignee can move their assigned task
+    if (task.assigned_to === currentUserId) return true;
+    
     return false;
   };
 
