@@ -4,6 +4,7 @@ import { AuthContext } from "./context/AuthContext";
 import { supabase } from "./lib/supabase";
 import { motion } from "framer-motion";
 import { FiSave, FiX, FiUser, FiMail, FiPhone, FiBriefcase, FiGlobe, FiMessageSquare } from "react-icons/fi";
+import Footer from "./components/Footer";
 
 export default function LeadForm() {
   const { profile } = useContext(AuthContext);
@@ -242,6 +243,7 @@ export default function LeadForm() {
           </form>
         </div>
       </motion.div>
+      <Footer/>
     </div>
   );
 }
