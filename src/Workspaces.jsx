@@ -25,7 +25,10 @@ import {
   FiBarChart2,
   FiCalendar,
   FiClock,
-  FiStar
+  FiStar,
+  FiLayers,
+  FiFolder,
+  FiBriefcase
 } from "react-icons/fi";
 import { supabase } from "./lib/supabase";
 
@@ -615,7 +618,7 @@ export default function Workspaces() {
         </p>
       </div>
       
-      {/* Lead Analytics Section - Centered below header */}
+      {/* Lead Analytics Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -705,7 +708,7 @@ export default function Workspaces() {
         </div>
       </motion.div>
       
-      {/* User Tasks Statistics - Centered */}
+      {/* User Tasks Statistics */}
       <div className="max-w-6xl mx-auto mb-8 md:mb-10">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -818,104 +821,240 @@ export default function Workspaces() {
           </div>
         </motion.div>
       </div>
-      
-      {/* Search and Create Section - Centered */}
+
+      {/* Search Section */}
       <div className="max-w-4xl mx-auto mb-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex-1 max-w-xl mx-auto md:mx-0">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiSearch className="h-5 w-5 text-gray-400" />
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-lg p-6 md:p-8">
+          <div className="text-center mb-6">
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">Find Your Workspace</h2>
+            <p className="text-gray-600">Search and filter through all available workspaces</p>
+          </div>
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex-1">
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <FiSearch className="h-5 w-5 text-gray-400 group-hover:text-red-500 transition-colors" />
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="block w-full pl-12 pr-12 py-4 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-3 focus:ring-red-500/20 focus:border-red-500 focus:outline-none transition-all duration-300 text-base placeholder-gray-500 hover:border-gray-300"
+                  placeholder="Search workspaces by name, member, or tasks..."
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center hover:scale-110 transition-transform"
+                    aria-label="Clear search"
+                  >
+                    <span className="text-gray-400 hover:text-gray-600 text-2xl font-light">×</span>
+                  </button>
+                )}
               </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 focus:outline-none transition-colors text-base"
-                placeholder="Search workspaces by name..."
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  aria-label="Clear search"
-                >
-                  <span className="text-gray-400 hover:text-gray-600 text-xl">×</span>
-                </button>
-              )}
+            </div>
+            
+            <div className="flex justify-center">
+              <CreateWorkspace />
             </div>
           </div>
           
-          <div className="flex justify-center">
-            <CreateWorkspace />
-          </div>
+          {/* Search Stats */}
+          {searchQuery && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 text-center"
+            >
+              <p className="text-sm text-gray-600">
+                Found <span className="font-semibold text-red-600">{filteredWorkspaces.length}</span> workspace{filteredWorkspaces.length !== 1 ? 's' : ''} matching "<span className="font-medium text-gray-800">{searchQuery}</span>"
+              </p>
+            </motion.div>
+          )}
         </div>
       </div>
 
-      {/* Analytics Overview - Centered */}
+      {/* Overall Analytics Section - Improved with flex wrap */}
       {!loading && workspaces.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-6xl mx-auto mb-8"
+          className="max-w-6xl mx-auto mb-8 md:mb-12"
         >
           <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-6 md:p-8">
-            <div className="text-center mb-6">
-              <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">Overall Analytics</h2>
-              <p className="text-gray-600">Summary of all workspaces</p>
+            <div className="text-center mb-8">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center shadow-md">
+                  <FiActivity className="w-6 h-6 md:w-7 md:h-7 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Overall Analytics</h2>
+                  <p className="text-gray-600">Summary of all workspaces performance</p>
+                </div>
+              </div>
             </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-5 bg-red-50 rounded-xl border border-red-200">
-                <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+            {/* Analytics Boxes - Using flex-wrap for better responsiveness */}
+            <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+              {/* Total Workspaces */}
+              <div className="flex-1 min-w-[200px] max-w-[250px] bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl p-5 md:p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center">
+                    <FiFolder className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Total Workspaces</span>
+                </div>
+                <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
                   {workspaces.length}
                 </div>
-                <div className="text-sm text-gray-600">Total Workspaces</div>
+                <div className="h-2 bg-red-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full"
+                    style={{ width: `${Math.min(100, (workspaces.length / 10) * 100)}%` }}
+                  />
+                </div>
               </div>
               
-              <div className="text-center p-5 bg-blue-50 rounded-xl border border-blue-200">
-                <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+              {/* Total Members */}
+              <div className="flex-1 min-w-[200px] max-w-[250px] bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-5 md:p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
+                    <FiUsers className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Total Members</span>
+                </div>
+                <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
                   {Object.values(memberCounts).reduce((a, b) => a + b, 0)}
                 </div>
-                <div className="text-sm text-gray-600">Total Members</div>
+                <div className="h-2 bg-blue-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"
+                    style={{ width: `${Math.min(100, (Object.values(memberCounts).reduce((a, b) => a + b, 0) / 50) * 100)}%` }}
+                  />
+                </div>
               </div>
               
-              <div className="text-center p-5 bg-amber-50 rounded-xl border border-amber-200">
-                <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+              {/* Total Tasks */}
+              <div className="flex-1 min-w-[200px] max-w-[250px] bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-xl p-5 md:p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 flex items-center justify-center">
+                    <FiClipboard className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Total Tasks</span>
+                </div>
+                <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
                   {Object.values(taskCounts).reduce((a, b) => a + b, 0)}
                 </div>
-                <div className="text-sm text-gray-600">Total Tasks</div>
+                <div className="h-2 bg-amber-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-amber-500 to-amber-600 rounded-full"
+                    style={{ width: `${Math.min(100, (Object.values(taskCounts).reduce((a, b) => a + b, 0) / 100) * 100)}%` }}
+                  />
+                </div>
               </div>
               
-              <div className="text-center p-5 bg-emerald-50 rounded-xl border border-emerald-200">
-                <div className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+              {/* Avg Tasks per Workspace */}
+              <div className="flex-1 min-w-[200px] max-w-[250px] bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-xl p-5 md:p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 flex items-center justify-center">
+                    <FiLayers className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Avg Tasks/Workspace</span>
+                </div>
+                <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
                   {workspaces.length > 0 
                     ? Math.round(Object.values(taskCounts).reduce((a, b) => a + b, 0) / workspaces.length)
                     : 0
                   }
                 </div>
-                <div className="text-sm text-gray-600">Avg Tasks/Workspace</div>
+                <div className="h-2 bg-emerald-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full"
+                    style={{ width: `${Math.min(100, ((Object.values(taskCounts).reduce((a, b) => a + b, 0) / Math.max(1, workspaces.length)) / 20) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Additional Stats Row */}
+            <div className="mt-8 pt-8 border-t border-gray-200">
+              <div className="flex flex-wrap justify-center gap-6">
+                <div className="text-center">
+                  <div className="text-lg font-semibold text-gray-900 mb-1">Avg Members/Workspace</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {workspaces.length > 0 
+                      ? Math.round(Object.values(memberCounts).reduce((a, b) => a + b, 0) / workspaces.length)
+                      : 0
+                    }
+                  </div>
+                </div>
+                
+                <div className="text-center">
+                  <div className="text-lg font-semibold text-gray-900 mb-1">Avg Completion Rate</div>
+                  <div className="text-2xl font-bold text-emerald-600">
+                    {workspaces.length > 0 
+                      ? Math.round(
+                          Object.keys(taskStatusBreakdown).reduce((total, wsId) => {
+                            const breakdown = taskStatusBreakdown[wsId];
+                            const totalTasks = taskCounts[wsId] || 0;
+                            const completedTasks = breakdown?.completed || 0;
+                            return total + (totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0);
+                          }, 0) / workspaces.length
+                        )
+                      : 0
+                    }%
+                  </div>
+                </div>
+                
+                <div className="text-center">
+                  <div className="text-lg font-semibold text-gray-900 mb-1">Most Active Status</div>
+                  <div className="text-2xl font-bold text-red-600">
+                    {workspaces.length > 0 
+                      ? (() => {
+                          const statusCounts = {};
+                          Object.values(taskStatusBreakdown).forEach(breakdown => {
+                            Object.entries(breakdown).forEach(([status, count]) => {
+                              statusCounts[status] = (statusCounts[status] || 0) + count;
+                            });
+                          });
+                          
+                          const maxStatus = Object.keys(statusCounts).reduce((a, b) => 
+                            statusCounts[a] > statusCounts[b] ? a : b
+                          );
+                          
+                          return statusColors[maxStatus]?.label || 'N/A';
+                        })()
+                      : 'N/A'
+                    }
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </motion.div>
       )}
 
-      {/* Workspace Content - Centered */}
+      {/* Workspace Content */}
       <div className="max-w-7xl mx-auto">
-        {/* Content Header - Centered */}
+        {/* Content Header */}
         {workspaces.length > 0 && (
           <div className="text-center mb-6 md:mb-8">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-gray-900 mb-2">
-              Your Workspaces
-              {filteredWorkspaces.length > 0 && (
-                <span className="ml-2 text-base font-normal text-gray-500">
-                  ({filteredWorkspaces.length} total)
-                </span>
-              )}
-            </h2>
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center">
+                <FiBriefcase className="w-5 h-5 text-white" />
+              </div>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
+                Your Workspaces
+                {filteredWorkspaces.length > 0 && (
+                  <span className="ml-2 text-base font-normal text-gray-500">
+                    ({filteredWorkspaces.length} total)
+                  </span>
+                )}
+              </h2>
+            </div>
             <p className="text-base text-gray-600 max-w-3xl mx-auto">
-              Click on any workspace to view detailed analytics and manage tasks
+              Click on any workspace to view detailed analytics, manage tasks, and collaborate with team members
             </p>
           </div>
         )}
@@ -927,14 +1066,14 @@ export default function Workspaces() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center py-12 md:py-16 lg:py-20"
           >
-            <div className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
-              <FiGrid className="w-10 h-10 md:w-12 md:h-12 text-gray-400" />
+            <div className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-6 rounded-full bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-200 flex items-center justify-center">
+              <FiGrid className="w-10 h-10 md:w-12 md:h-12 text-red-500" />
             </div>
             <h3 className="text-xl md:text-2xl font-semibold text-gray-900 mb-3">
               No workspaces yet
             </h3>
             <p className="text-base text-gray-600 mb-6 max-w-md mx-auto">
-              You haven't created or joined any workspaces. Create your first workspace to get started!
+              You haven't created or joined any workspaces. Create your first workspace to get started with team collaboration!
             </p>
             <div className="flex justify-center">
               <CreateWorkspace />
@@ -942,7 +1081,7 @@ export default function Workspaces() {
           </motion.div>
         )}
 
-        {/* Workspace Grid - Centered */}
+        {/* Workspace Grid */}
         {workspaces.length > 0 && (
           <AnimatePresence mode="wait">
             {loading || membersLoading || analyticsLoading ? (
