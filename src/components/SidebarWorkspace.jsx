@@ -25,7 +25,7 @@ export default function SidebarWorkspace() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
 
-  const isAhmedMemon = profile?.email === "ahmedmemon3344@gmail.com";
+  const isAhmedMemon = profile?.email === "sot@bigbulldigital.com";
 
   const navItems = [
     { 
