@@ -5,6 +5,7 @@ import Header from "./components/Header";
 import Sidebar from "./components/LandingPage";
 import { WorkspaceContext } from "./context/WorkspaceContext";
 import { useNavigate } from "react-router-dom";
+import Footer from "./components/Footer";
 
 export default function Invites() {
   const { user } = useContext(AuthContext);
@@ -141,6 +142,7 @@ const handleError = (error, userMessage = "Something went wrong") => {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50">
 {errorMessage && (
   <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg">
@@ -253,6 +255,8 @@ const handleError = (error, userMessage = "Something went wrong") => {
         </main>
       </div>
     </div>
+      <Footer/>
+      </>
   );
 
 }
