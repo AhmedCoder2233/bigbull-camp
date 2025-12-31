@@ -32,7 +32,7 @@ export default function LeadForm() {
         .insert([{
           ...formData,
           created_by: profile?.id,
-          created_by_name: profile?.full_name || profile?.email,
+          created_by_name: profile?.name || profile?.email,
           created_at: new Date().toISOString()
         }]);
 
