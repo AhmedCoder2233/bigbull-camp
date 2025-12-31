@@ -31,6 +31,7 @@ import {
   FiBriefcase
 } from "react-icons/fi";
 import { supabase } from "./lib/supabase";
+import Footer from "./components/Footer";
 
 export default function Workspaces() {
   const { workspaces, loading, removeWorkspace } = useContext(WorkspaceContext);
@@ -977,61 +978,65 @@ export default function Workspaces() {
               </div>
             </div>
             
-            {/* Additional Stats Row */}
-            <div className="mt-8 pt-8 border-t border-gray-200">
-              <div className="flex flex-wrap justify-center gap-6">
-                <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-900 mb-1">Avg Members/Workspace</div>
-                  <div className="text-2xl font-bold text-blue-600">
-                    {workspaces.length > 0 
-                      ? Math.round(Object.values(memberCounts).reduce((a, b) => a + b, 0) / workspaces.length)
-                      : 0
-                    }
-                  </div>
-                </div>
-                
-                <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-900 mb-1">Avg Completion Rate</div>
-                  <div className="text-2xl font-bold text-emerald-600">
-                    {workspaces.length > 0 
-                      ? Math.round(
-                          Object.keys(taskStatusBreakdown).reduce((total, wsId) => {
-                            const breakdown = taskStatusBreakdown[wsId];
-                            const totalTasks = taskCounts[wsId] || 0;
-                            const completedTasks = breakdown?.completed || 0;
-                            return total + (totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0);
-                          }, 0) / workspaces.length
-                        )
-                      : 0
-                    }%
-                  </div>
-                </div>
-                
-                <div className="text-center">
-                  <div className="text-lg font-semibold text-gray-900 mb-1">Most Active Status</div>
-                  <div className="text-2xl font-bold text-red-600">
-                    {workspaces.length > 0 
-                      ? (() => {
-                          const statusCounts = {};
-                          Object.values(taskStatusBreakdown).forEach(breakdown => {
-                            Object.entries(breakdown).forEach(([status, count]) => {
-                              statusCounts[status] = (statusCounts[status] || 0) + count;
-                            });
-                          });
-                          
-                          const maxStatus = Object.keys(statusCounts).reduce((a, b) => 
-                            statusCounts[a] > statusCounts[b] ? a : b
-                          );
-                          
-                          return statusColors[maxStatus]?.label || 'N/A';
-                        })()
-                      : 'N/A'
-                    }
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+         {/* Additional Stats Row */}
+<div className="mt-8 pt-8 border-t border-gray-200">
+  <div className="flex flex-wrap justify-center gap-6">
+    <div className="text-center">
+      <div className="text-lg font-semibold text-gray-900 mb-1">Avg Members/Workspace</div>
+      <div className="text-2xl font-bold text-blue-600">
+        {workspaces.length > 0 
+          ? Math.round(Object.values(memberCounts).reduce((a, b) => a + b, 0) / workspaces.length)
+          : 0
+        }
+      </div>
+    </div>
+    
+    <div className="text-center">
+      <div className="text-lg font-semibold text-gray-900 mb-1">Avg Completion Rate</div>
+      <div className="text-2xl font-bold text-emerald-600">
+        {workspaces.length > 0 
+          ? Math.round(
+              Object.keys(taskStatusBreakdown).reduce((total, wsId) => {
+                const breakdown = taskStatusBreakdown[wsId];
+                const totalTasks = taskCounts[wsId] || 0;
+                const completedTasks = breakdown?.completed || 0;
+                return total + (totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0);
+              }, 0) / workspaces.length
+            )
+          : 0
+        }%
+      </div>
+    </div>
+    
+    <div className="text-center">
+      <div className="text-lg font-semibold text-gray-900 mb-1">Most Active Status</div>
+      <div className="text-2xl font-bold text-red-600">
+        {workspaces.length > 0 
+          ? (() => {
+              const statusCounts = {};
+              Object.values(taskStatusBreakdown).forEach(breakdown => {
+                Object.entries(breakdown).forEach(([status, count]) => {
+                  statusCounts[status] = (statusCounts[status] || 0) + count;
+                });
+              });
+              
+              // Check if we have any status counts
+              const statusKeys = Object.keys(statusCounts);
+              if (statusKeys.length === 0) return 'N/A';
+              
+              const maxStatus = statusKeys.reduce((a, b) => 
+                statusCounts[a] > statusCounts[b] ? a : b
+              );
+              
+              return statusColors[maxStatus]?.label || 'N/A';
+            })()
+          : 'N/A'
+        }
+      </div>
+    </div>
+  </div>
+</div>
+</div>
         </motion.div>
       )}
 
@@ -1240,6 +1245,7 @@ export default function Workspaces() {
             </motion.div>
           </motion.div>
         )}
+        <Footer/>
       </AnimatePresence>
     </div>
   );
