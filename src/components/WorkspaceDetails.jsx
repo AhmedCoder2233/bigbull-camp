@@ -22,6 +22,7 @@ import {
   FiMessageSquare,
   FiActivity,
 } from "react-icons/fi";
+import Footer from "./Footer";
 
 export default function WorkspaceDetails() {
   const { id } = useParams();
@@ -728,6 +729,7 @@ export default function WorkspaceDetails() {
           </div>
         </div>
       )}
+      <Footer/>
     </div>
   );
 }
