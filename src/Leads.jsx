@@ -47,7 +47,7 @@ export default function Leads() {
   const assignDropdownRef = useRef(null);
   const dropdownRefs = useRef({});
   
-  const isAhmedMemon = profile?.email === "ahmedmemon3344@gmail.com";
+  const isAhmedMemon = profile?.email === "sot@bigbulldigital.com";
 
   // Close dropdown when clicking outside
   useEffect(() => {
