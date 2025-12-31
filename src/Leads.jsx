@@ -686,10 +686,8 @@ export default function Leads() {
                             <FiCalendar className="w-4 h-4 text-gray-400" />
                             <span>{formatDate(lead.created_at)}</span>
                           </div>
-                          <div className="text-xs text-gray-500 mt-0.5">
-                            {isAhmedMemon || isAssignedToCurrentUser(lead) 
-                              ? `by ${lead.created_by_name}` 
-                              : 'by •••'}
+                          <div className="text-xs text-gray-500 mt-0.5"> 
+                             by {lead.created_by_name}
                           </div>
                         </td>
 
